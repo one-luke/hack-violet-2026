@@ -1,31 +1,34 @@
+from flask import Flask, jsonify
 import sys
 import os
 
-# Add both api and backend directories to path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-backend_dir = os.path.join(parent_dir, 'backend')
+# Create a minimal Flask app for debugging
+app = Flask(__name__)
 
-sys.path.insert(0, backend_dir)
-sys.path.insert(0, current_dir)
-
-# Import and create the Flask app
-try:
-    from app import create_app
-    app = create_app()
-except Exception as e:
-    # If there's an error, create a simple Flask app to report it
-    from flask import Flask, jsonify
-    app = Flask(__name__)
+@app.route('/api/<path:path>')
+def catch_all(path):
+    # Add both api and backend directories to path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    backend_dir = os.path.join(parent_dir, 'backend')
     
-    @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
-    def catch_all(path):
-        return jsonify({
-            'error': 'Server initialization failed',
-            'details': str(e),
-            'path_info': {
-                'current_dir': current_dir,
-                'backend_dir': backend_dir,
-                'sys_path': sys.path[:3]
-            }
-        }), 500
+    return jsonify({
+        'message': 'API endpoint hit',
+        'path': path,
+        'python_version': sys.version,
+        'cwd': os.getcwd(),
+        'current_dir': current_dir,
+        'parent_dir': parent_dir,
+        'backend_dir': backend_dir,
+        'backend_exists': os.path.exists(backend_dir),
+        'files_in_cwd': os.listdir('.'),
+        'env_check': {
+            'SUPABASE_URL': 'SET' if os.environ.get('SUPABASE_URL') else 'NOT SET',
+            'SUPABASE_SERVICE_KEY': 'SET' if os.environ.get('SUPABASE_SERVICE_KEY') else 'NOT SET',
+            'FLASK_SECRET_KEY': 'SET' if os.environ.get('FLASK_SECRET_KEY') else 'NOT SET',
+        }
+    }), 200
+
+@app.route('/api/health')
+def health():
+    return jsonify({'status': 'healthy'}), 200
