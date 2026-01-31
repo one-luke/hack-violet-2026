@@ -35,14 +35,17 @@ import { supabase } from '../lib/supabase'
 import { Profile } from '../types'
 
 const INDUSTRIES = [
-  'Technology',
-  'Healthcare',
-  'Finance',
-  'Education',
-  'Marketing',
-  'Design',
-  'Engineering',
-  'Sales',
+  'Software Engineering',
+  'Data Science',
+  'Manufacturing',
+  'Mechanical Engineering',
+  'Electrical Engineering',
+  'Chemical Engineering',
+  'Biotechnology',
+  'Robotics',
+  'Aerospace',
+  'Research & Development',
+  'Quality Assurance',
   'Other',
 ]
 
@@ -68,6 +71,34 @@ export default function Search() {
   const [error, setError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
 
+  const parseNaturalLanguage = async (query: string, token: string) => {
+    const response = await fetch(
+      'http://localhost:5001/api/profile/search/parse',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to parse search query')
+    }
+
+    const data = await response.json()
+    return data.filters as {
+      text_query: string
+      industry: string
+      location: string
+      school: string
+      career_status: string
+      skills: string[]
+    }
+  }
+
   useEffect(() => {
     // Load all profiles initially
     handleSearch()
@@ -85,14 +116,54 @@ export default function Search() {
         return
       }
 
+      const hasExplicitFilters =
+        Boolean(selectedIndustry) ||
+        Boolean(selectedLocation) ||
+        Boolean(selectedSchool) ||
+        Boolean(selectedCareerStatus) ||
+        selectedSkills.length > 0
+
+      let effectiveQuery = searchQuery
+      let effectiveIndustry = selectedIndustry
+      let effectiveLocation = selectedLocation
+      let effectiveSchool = selectedSchool
+      let effectiveCareerStatus = selectedCareerStatus
+      let effectiveSkills = selectedSkills
+
+      if (searchQuery && !hasExplicitFilters) {
+        try {
+          const parsed = await parseNaturalLanguage(searchQuery, session.access_token)
+          effectiveQuery = parsed.text_query || ''
+          effectiveIndustry = parsed.industry || ''
+          effectiveLocation = parsed.location || ''
+          effectiveSchool = parsed.school || ''
+          effectiveCareerStatus = parsed.career_status || ''
+          effectiveSkills = parsed.skills || []
+
+          setSelectedIndustry(effectiveIndustry)
+          setSelectedLocation(effectiveLocation)
+          setSelectedSchool(effectiveSchool)
+          setSelectedCareerStatus(effectiveCareerStatus)
+          setSelectedSkills(effectiveSkills)
+        } catch (parseErr) {
+          toast({
+            title: 'Unable to parse search text',
+            description: parseErr instanceof Error ? parseErr.message : 'An error occurred',
+            status: 'warning',
+            duration: 4000,
+            isClosable: true,
+          })
+        }
+      }
+
       // Build query params
       const params = new URLSearchParams()
-      if (searchQuery) params.append('q', searchQuery)
-      if (selectedIndustry) params.append('industry', selectedIndustry)
-      if (selectedLocation) params.append('location', selectedLocation)
-      if (selectedSchool) params.append('school', selectedSchool)
-      if (selectedCareerStatus) params.append('career_status', selectedCareerStatus)
-      selectedSkills.forEach(skill => params.append('skills', skill))
+      if (effectiveQuery) params.append('q', effectiveQuery)
+      if (effectiveIndustry) params.append('industry', effectiveIndustry)
+      if (effectiveLocation) params.append('location', effectiveLocation)
+      if (effectiveSchool) params.append('school', effectiveSchool)
+      if (effectiveCareerStatus) params.append('career_status', effectiveCareerStatus)
+      effectiveSkills.forEach(skill => params.append('skills', skill))
 
       const response = await fetch(
         `http://localhost:5001/api/profile/search?${params.toString()}`,
@@ -189,7 +260,7 @@ export default function Search() {
                     <SearchIcon color="gray.400" />
                   </InputLeftElement>
                   <Input
-                    placeholder="Search by name, bio, industry..."
+                    placeholder="Search by name or use natural language (e.g., went to Virginia Tech)"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyPress={handleKeyPress}
