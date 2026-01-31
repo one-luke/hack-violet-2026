@@ -9,6 +9,7 @@ import CreateProfile from './pages/CreateProfile'
 import EditProfile from './pages/EditProfile'
 import ViewProfile from './pages/ViewProfile'
 import Search from './pages/Search'
+import Messages from './pages/Messages'
 
 function App() {
   return (
@@ -56,6 +57,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Search />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <Messages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages/:conversationId"
+              element={
+                <ProtectedRoute>
+                  <Messages />
                 </ProtectedRoute>
               }
             />

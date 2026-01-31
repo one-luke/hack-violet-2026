@@ -19,10 +19,11 @@ import {
   Icon,
   Tag,
 } from '@chakra-ui/react'
-import { ExternalLinkIcon, EditIcon, DownloadIcon, ArrowBackIcon } from '@chakra-ui/icons'
+import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Profile } from '../types'
+import { Profile, Insight } from '../types'
+import { InsightsList, CreateInsightForm } from '../components/Insights'
 
 const ViewProfile = () => {
   const { user } = useAuth()
@@ -31,6 +32,13 @@ const ViewProfile = () => {
   const toast = useToast()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [followLoading, setFollowLoading] = useState(false)
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [showCreateInsight, setShowCreateInsight] = useState(false)
   
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !userId || userId === user?.id
@@ -38,6 +46,13 @@ const ViewProfile = () => {
 
   useEffect(() => {
     fetchProfile()
+    if (!isOwnProfile && profileIdToFetch) {
+      fetchFollowStatus()
+    }
+    if (profileIdToFetch) {
+      fetchFollowStats()
+      fetchInsights()
+    }
   }, [userId, user])
 
   const fetchProfile = async () => {
@@ -86,6 +101,256 @@ const ViewProfile = () => {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchFollowStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || !profileIdToFetch) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/follows/is-following/${profileIdToFetch}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setIsFollowing(data.is_following)
+      }
+    } catch (error) {
+      console.error('Error fetching follow status:', error)
+    }
+  }
+
+  const fetchFollowStats = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || !profileIdToFetch) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/follows/stats/${profileIdToFetch}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setFollowersCount(data.followers_count)
+        setFollowingCount(data.following_count)
+      }
+    } catch (error) {
+      console.error('Error fetching follow stats:', error)
+    }
+  }
+
+  const handleFollowToggle = async () => {
+    if (!profileIdToFetch || isOwnProfile) return
+
+    setFollowLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const endpoint = isFollowing
+        ? `${import.meta.env.VITE_API_URL}/api/follows/unfollow/${profileIdToFetch}`
+        : `${import.meta.env.VITE_API_URL}/api/follows/follow/${profileIdToFetch}`
+
+      const response = await fetch(endpoint, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) throw new Error(isFollowing ? 'Failed to unfollow' : 'Failed to follow')
+
+      setIsFollowing(!isFollowing)
+      setFollowersCount((prev) => isFollowing ? prev - 1 : prev + 1)
+      
+      toast({
+        title: isFollowing ? 'Unfollowed' : 'Following',
+        description: isFollowing
+          ? `You unfollowed ${profile?.full_name}`
+          : `You are now following ${profile?.full_name}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+    } finally {
+      setFollowLoading(false)
+    }
+  }
+
+  const fetchInsights = async () => {
+    if (!profileIdToFetch) return
+    
+    setInsightsLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/${profileIdToFetch}/insights`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setInsights(data)
+      }
+    } catch (error) {
+      console.error('Error fetching insights:', error)
+    } finally {
+      setInsightsLoading(false)
+    }
+  }
+
+  const handleCreateInsight = async (data: { title: string; content: string; link_url?: string; link_title?: string }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        }
+      )
+
+      if (!response.ok) throw new Error('Failed to create insight')
+
+      toast({
+        title: 'Insight posted!',
+        description: 'Your career insight has been shared',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+
+      setShowCreateInsight(false)
+      fetchInsights()
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  const handleLikeInsight = async (insightId: string) => {
+    try {
+      // Optimistically update UI
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}/like`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+    } catch (error) {
+      console.error('Error liking insight:', error)
+      // Revert optimistic update on error
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+    }
+  }
+
+  const handleUnlikeInsight = async (insightId: string) => {
+    try {
+      // Optimistically update UI
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}/unlike`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+    } catch (error) {
+      console.error('Error unliking insight:', error)
+      // Revert optimistic update on error
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+    }
+  }
+
+  const handleDeleteInsight = async (insightId: string) => {
+    if (!confirm('Are you sure you want to delete this insight?')) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        toast({
+          title: 'Insight deleted',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+        fetchInsights()
+      }
+    } catch (error) {
+      console.error('Error deleting insight:', error)
     }
   }
 
@@ -159,15 +424,76 @@ const ViewProfile = () => {
             )}
             <Heading size="lg">{isOwnProfile ? 'My Profile' : `${profile.full_name}'s Profile`}</Heading>
           </HStack>
-          {isOwnProfile && (
-            <Button
-              leftIcon={<EditIcon />}
-              colorScheme="primary"
-              onClick={() => navigate('/profile/edit')}
-            >
-              Edit Profile
-            </Button>
-          )}
+          <HStack>
+            {!isOwnProfile && (
+              <>
+                <Button
+                  colorScheme="purple"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession()
+                      if (!session || !profileIdToFetch) return
+
+                      const response = await fetch(
+                        `${import.meta.env.VITE_API_URL}/api/messages/conversations/${profileIdToFetch}`,
+                        {
+                          headers: {
+                            'Authorization': `Bearer ${session.access_token}`,
+                          },
+                        }
+                      )
+
+                      if (response.ok) {
+                        const data = await response.json()
+                        navigate(`/messages/${data.conversation.id}`)
+                      }
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to start conversation',
+                        status: 'error',
+                        duration: 3000,
+                        isClosable: true,
+                      })
+                    }
+                  }}
+                  leftIcon={
+                    <Icon viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                    </Icon>
+                  }
+                >
+                  Message
+                </Button>
+                <Button
+                  colorScheme={isFollowing ? 'gray' : 'primary'}
+                  onClick={handleFollowToggle}
+                  isLoading={followLoading}
+                  leftIcon={
+                    <Icon viewBox="0 0 24 24">
+                      {isFollowing ? (
+                        <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      ) : (
+                        <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      )}
+                    </Icon>
+                  }
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Button>
+              </>
+            )}
+            {isOwnProfile && (
+              <Button
+                leftIcon={<EditIcon />}
+                colorScheme="primary"
+                onClick={() => navigate('/profile/edit')}
+              >
+                Edit Profile
+              </Button>
+            )}
+          </HStack>
         </HStack>
 
         <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
@@ -183,6 +509,14 @@ const ViewProfile = () => {
               />
               <VStack align="start" flex={1} spacing={2}>
                 <Heading size="lg">{profile.full_name}</Heading>
+                <HStack spacing={4}>
+                  <Text fontSize="sm" color="text.600">
+                    <Text as="span" fontWeight="bold">{followersCount}</Text> followers
+                  </Text>
+                  <Text fontSize="sm" color="text.600">
+                    <Text as="span" fontWeight="bold">{followingCount}</Text> following
+                  </Text>
+                </HStack>
                 <Badge colorScheme="primary" fontSize="md" px={3} py={1} borderRadius="full">
                   {profile.industry}
                 </Badge>
@@ -305,6 +639,45 @@ const ViewProfile = () => {
                   </HStack>
                 </Box>
               </>
+            )}
+          </VStack>
+        </Box>
+
+        {/* Insights Section */}
+        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
+          <VStack spacing={4} align="stretch">
+            <HStack justify="space-between" align="center">
+              <Heading size="md">Career Insights</Heading>
+              {isOwnProfile && !showCreateInsight && (
+                <Button
+                  colorScheme="primary"
+                  size="sm"
+                  onClick={() => setShowCreateInsight(true)}
+                >
+                  Share Insight
+                </Button>
+              )}
+            </HStack>
+
+            {showCreateInsight && isOwnProfile && (
+              <CreateInsightForm
+                onSubmit={handleCreateInsight}
+                onCancel={() => setShowCreateInsight(false)}
+              />
+            )}
+
+            {insightsLoading ? (
+              <Center py={8}>
+                <Spinner size="md" color="primary.500" />
+              </Center>
+            ) : (
+              <InsightsList
+                insights={insights}
+                currentUserId={user?.id}
+                onLike={handleLikeInsight}
+                onUnlike={handleUnlikeInsight}
+                onDelete={isOwnProfile ? handleDeleteInsight : undefined}
+              />
             )}
           </VStack>
         </Box>
