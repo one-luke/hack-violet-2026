@@ -22,7 +22,8 @@ import {
 import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Profile } from '../types'
+import { Profile, Insight } from '../types'
+import { InsightsList, CreateInsightForm } from '../components/Insights'
 
 const ViewProfile = () => {
   const { user } = useAuth()
@@ -35,6 +36,9 @@ const ViewProfile = () => {
   const [followersCount, setFollowersCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [followLoading, setFollowLoading] = useState(false)
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [showCreateInsight, setShowCreateInsight] = useState(false)
   
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !userId || userId === user?.id
@@ -47,6 +51,7 @@ const ViewProfile = () => {
     }
     if (profileIdToFetch) {
       fetchFollowStats()
+      fetchInsights()
     }
   }, [userId, user])
 
@@ -189,6 +194,163 @@ const ViewProfile = () => {
       })
     } finally {
       setFollowLoading(false)
+    }
+  }
+
+  const fetchInsights = async () => {
+    if (!profileIdToFetch) return
+    
+    setInsightsLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/${profileIdToFetch}/insights`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setInsights(data)
+      }
+    } catch (error) {
+      console.error('Error fetching insights:', error)
+    } finally {
+      setInsightsLoading(false)
+    }
+  }
+
+  const handleCreateInsight = async (data: { title: string; content: string; link_url?: string; link_title?: string }) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        }
+      )
+
+      if (!response.ok) throw new Error('Failed to create insight')
+
+      toast({
+        title: 'Insight posted!',
+        description: 'Your career insight has been shared',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+
+      setShowCreateInsight(false)
+      fetchInsights()
+    } catch (error: any) {
+      throw error
+    }
+  }
+
+  const handleLikeInsight = async (insightId: string) => {
+    try {
+      // Optimistically update UI
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}/like`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+    } catch (error) {
+      console.error('Error liking insight:', error)
+      // Revert optimistic update on error
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+    }
+  }
+
+  const handleUnlikeInsight = async (insightId: string) => {
+    try {
+      // Optimistically update UI
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}/unlike`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+    } catch (error) {
+      console.error('Error unliking insight:', error)
+      // Revert optimistic update on error
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+    }
+  }
+
+  const handleDeleteInsight = async (insightId: string) => {
+    if (!confirm('Are you sure you want to delete this insight?')) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        toast({
+          title: 'Insight deleted',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        })
+        fetchInsights()
+      }
+    } catch (error) {
+      console.error('Error deleting insight:', error)
     }
   }
 
@@ -477,6 +639,45 @@ const ViewProfile = () => {
                   </HStack>
                 </Box>
               </>
+            )}
+          </VStack>
+        </Box>
+
+        {/* Insights Section */}
+        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
+          <VStack spacing={4} align="stretch">
+            <HStack justify="space-between" align="center">
+              <Heading size="md">Career Insights</Heading>
+              {isOwnProfile && !showCreateInsight && (
+                <Button
+                  colorScheme="primary"
+                  size="sm"
+                  onClick={() => setShowCreateInsight(true)}
+                >
+                  Share Insight
+                </Button>
+              )}
+            </HStack>
+
+            {showCreateInsight && isOwnProfile && (
+              <CreateInsightForm
+                onSubmit={handleCreateInsight}
+                onCancel={() => setShowCreateInsight(false)}
+              />
+            )}
+
+            {insightsLoading ? (
+              <Center py={8}>
+                <Spinner size="md" color="primary.500" />
+              </Center>
+            ) : (
+              <InsightsList
+                insights={insights}
+                currentUserId={user?.id}
+                onLike={handleLikeInsight}
+                onUnlike={handleUnlikeInsight}
+                onDelete={isOwnProfile ? handleDeleteInsight : undefined}
+              />
             )}
           </VStack>
         </Box>

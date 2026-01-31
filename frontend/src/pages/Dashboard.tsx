@@ -16,6 +16,8 @@ import {
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { Insight } from '../types'
+import { InsightsList } from '../components/Insights'
 
 interface Profile {
   id: string
@@ -55,10 +57,13 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [insightsLoading, setInsightsLoading] = useState(false)
 
   useEffect(() => {
     fetchProfile()
     fetchNotifications()
+    fetchInsightsFeed()
   }, [user])
 
   const fetchProfile = async () => {
@@ -105,6 +110,87 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error('Error fetching notifications:', err)
+    }
+  }
+
+  const fetchInsightsFeed = async () => {
+    setInsightsLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/insights/feed`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setInsights(data)
+      }
+    } catch (err) {
+      console.error('Error fetching insights feed:', err)
+    } finally {
+      setInsightsLoading(false)
+    }
+  }
+
+  const handleLikeInsight = async (insightId: string) => {
+    try {
+      // Optimistically update UI
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      await fetch(`${import.meta.env.VITE_API_URL}/api/insights/${insightId}/like`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+    } catch (error) {
+      console.error('Error liking insight:', error)
+      // Revert optimistic update on error
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+    }
+  }
+
+  const handleUnlikeInsight = async (insightId: string) => {
+    try {
+      // Optimistically update UI
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      await fetch(`${import.meta.env.VITE_API_URL}/api/insights/${insightId}/unlike`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+    } catch (error) {
+      console.error('Error unliking insight:', error)
+      // Revert optimistic update on error
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
     }
   }
 
@@ -255,6 +341,38 @@ const Dashboard = () => {
             </VStack>
           </Box>
         )}
+
+        {/* Insights Feed from Following */}
+        <Box bg="surface.500" p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
+          <Heading size="md" mb={4}>
+            Career Insights from Your Network
+          </Heading>
+          {insightsLoading ? (
+            <Center py={8}>
+              <Spinner size="md" color="primary.500" />
+            </Center>
+          ) : insights.length > 0 ? (
+            <InsightsList
+              insights={insights}
+              currentUserId={user?.id}
+              onLike={handleLikeInsight}
+              onUnlike={handleUnlikeInsight}
+            />
+          ) : (
+            <Box textAlign="center" py={8}>
+              <Text color="text.500">
+                Follow people to see their career insights here
+              </Text>
+              <Button
+                mt={4}
+                colorScheme="primary"
+                onClick={() => navigate('/search')}
+              >
+                Find People to Follow
+              </Button>
+            </Box>
+          )}
+        </Box>
 
         <Box bg="secondary.200" p={6} borderRadius="lg" borderWidth="1px" borderColor="border.300">
           <Heading size="md" mb={3}>
