@@ -95,7 +95,7 @@ export default function Search() {
       selectedSkills.forEach(skill => params.append('skills', skill))
 
       const response = await fetch(
-        `http://localhost:5001/api/profile/search?${params.toString()}`,
+        `${import.meta.env.VITE_API_URL}/api/profile/search?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
