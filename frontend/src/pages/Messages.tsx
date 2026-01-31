@@ -270,8 +270,16 @@ export default function Messages() {
                 size="sm"
                 src={selectedConversation.other_user.profile_picture_url}
                 name={selectedConversation.other_user.name}
+                cursor="pointer"
+                onClick={() => navigate(`/profile/${selectedConversation.other_user.id}`)}
               />
-              <Text fontSize="lg" fontWeight="semibold">
+              <Text
+                fontSize="lg"
+                fontWeight="semibold"
+                cursor="pointer"
+                _hover={{ color: 'purple.600', textDecoration: 'underline' }}
+                onClick={() => navigate(`/profile/${selectedConversation.other_user.id}`)}
+              >
                 {selectedConversation.other_user.name}
               </Text>
             </HStack>

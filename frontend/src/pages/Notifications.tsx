@@ -195,9 +195,22 @@ export const NotificationInbox: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           navigate(`/messages/${data.conversation.id}`);
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Failed to open conversation',
+            status: 'error',
+            duration: 3000,
+          });
         }
       } catch (error) {
         console.error('Error opening conversation:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to open conversation',
+          status: 'error',
+          duration: 3000,
+        });
       }
     }
   };
