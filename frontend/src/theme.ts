@@ -5,38 +5,62 @@ const config: ThemeConfig = {
   useSystemColorMode: false,
 }
 
-// Theme color palette - cohesive warm, positive colors
+// Theme color palette - vibrant coral, peach, and yellow colors
 const colors = {
   primary: {
-    50: '#FFFDF8',
-    100: '#FFF9EC',
-    200: '#FFF3D6',
-    300: '#FFEDB3',
-    400: '#F9DC7A',
-    500: '#F4C430',  // Main primary color
-    600: '#D6A81F',
-    700: '#B88C15',
-    800: '#8F6B0E',
-    900: '#665008',
+    50: '#FFF5F5',
+    100: '#FFE3E3',
+    200: '#FFC9C9',
+    300: '#FFA8A8',
+    400: '#FC7F7F',
+    500: '#FA5C5C',  // Main primary color (coral red)
+    600: '#E54848',
+    700: '#CF3636',
+    800: '#B82626',
+    900: '#A11818',
   },
   secondary: {
-    50: '#FFFEF9',
-    100: '#FFFBF3',
-    200: '#FFF8E6',
-    300: '#FFF3D0',
-    400: '#FFEDB3',
-    500: '#FFE7A3',  // Main secondary color
-    600: '#E6CE8A',
-    700: '#CCB571',
-    800: '#B39C58',
-    900: '#99833F',
+    50: '#FFF8F5',
+    100: '#FFEEE6',
+    200: '#FFDACC',
+    300: '#FFC0AD',
+    400: '#FEA58C',
+    500: '#FD8A6B',  // Main secondary color (coral salmon)
+    600: '#E87756',
+    700: '#D26543',
+    800: '#BC5432',
+    900: '#A64422',
+  },
+  accent: {
+    50: '#FFF9F2',
+    100: '#FFF2E3',
+    200: '#FFE7CC',
+    300: '#FFDAAF',
+    400: '#FECE9B',
+    500: '#FEC288',  // Main accent color (peach)
+    600: '#E9AD73',
+    700: '#D3975F',
+    800: '#BD824C',
+    900: '#A76D3A',
+  },
+  highlight: {
+    50: '#FFFEF5',
+    100: '#FFFDE0',
+    200: '#FFFBC2',
+    300: '#FDF89D',
+    400: '#FCF489',
+    500: '#FBEF76',  // Main highlight color (yellow)
+    600: '#E6D961',
+    700: '#D0C34D',
+    800: '#BAAD3A',
+    900: '#A49728',
   },
   surface: {
     50: '#FFFFFF',
-    100: '#FFFBF3',  // Main background
-    200: '#FFF9EC',
-    300: '#FFF6E0',
-    400: '#FFF3D6',
+    100: '#FFFDF8',  // Main background
+    200: '#FFFBF0',
+    300: '#FFF9E8',
+    400: '#FFF7E0',
     500: '#FFFFFF',  // Main surface
     600: '#F5F5F5',
     700: '#E6E6E6',
@@ -49,71 +73,71 @@ const colors = {
     200: '#CCCCCC',
     300: '#B3B3B3',
     400: '#8F8F8F',
-    500: '#6B6B6B',  // Secondary text
+    500: '#6A6A6A',  // Secondary text
     600: '#4D4D4D',
     700: '#3B3B3B',
-    800: '#2E2E2E',  // Primary text
+    800: '#2B2B2B',  // Primary text
     900: '#1A1A1A',
   },
   border: {
-    50: '#FAF8F3',
-    100: '#F5F0E6',
-    200: '#EEE8D9',
-    300: '#E6D8B8',  // Main border color
-    400: '#D9C89F',
-    500: '#CCB886',
-    600: '#B39F6D',
-    700: '#998654',
-    800: '#806D3B',
-    900: '#665422',
+    50: '#FAF9F5',
+    100: '#F5F2EA',
+    200: '#F0EBDF',
+    300: '#E9E3D7',  // Main border color
+    400: '#D9D2C4',
+    500: '#C9C1B1',
+    600: '#B3AB9B',
+    700: '#9D9585',
+    800: '#87806F',
+    900: '#716A59',
   },
   success: {
-    50: '#E8F5E9',
-    100: '#C8E6C9',
-    200: '#A5D6A7',
-    300: '#81C784',
-    400: '#66BB6A',
-    500: '#4CAF50',  // Main success
-    600: '#43A047',
-    700: '#388E3C',
-    800: '#2E7D32',
-    900: '#1B5E20',
+    50: '#EDF9F3',
+    100: '#D4F1E3',
+    200: '#AAE4CA',
+    300: '#7DD7AF',
+    400: '#66C49A',
+    500: '#4FAF7B',  // Main success
+    600: '#459D6D',
+    700: '#3B8B5F',
+    800: '#317951',
+    900: '#276743',
   },
   warning: {
-    50: '#FFF8E1',
-    100: '#FFECB3',
-    200: '#FFE082',
-    300: '#FFD54F',
-    400: '#FFCA28',
-    500: '#F2A900',  // Main warning
-    600: '#D69500',
-    700: '#BA8100',
-    800: '#9E6D00',
-    900: '#825900',
+    50: '#FFF9F2',
+    100: '#FFF2E3',
+    200: '#FFE7CC',
+    300: '#FFDAAF',
+    400: '#FECE9B',
+    500: '#FEC288',  // Main warning (same as accent)
+    600: '#E9AD73',
+    700: '#D3975F',
+    800: '#BD824C',
+    900: '#A76D3A',
   },
   error: {
-    50: '#FFEBEE',
-    100: '#FFCDD2',
-    200: '#EF9A9A',
-    300: '#E57373',
-    400: '#EF5350',
-    500: '#D64545',  // Main error
-    600: '#C13939',
-    700: '#AB2E2E',
-    800: '#962222',
-    900: '#801717',
+    50: '#FFF5F5',
+    100: '#FFE3E3',
+    200: '#FFC9C9',
+    300: '#FFA8A8',
+    400: '#FC7F7F',
+    500: '#FA5C5C',  // Main error (same as primary)
+    600: '#E54848',
+    700: '#CF3636',
+    800: '#B82626',
+    900: '#A11818',
   },
   info: {
-    50: '#FDF8EA',
-    100: '#FAF0D5',
-    200: '#F5E1AB',
-    300: '#F0D281',
-    400: '#ECC377',
-    500: '#E8C86C',  // Main info
-    600: '#D1B45E',
-    700: '#BA9F50',
-    800: '#A38B42',
-    900: '#8C7634',
+    50: '#FFF8F5',
+    100: '#FFEEE6',
+    200: '#FFDACC',
+    300: '#FFC0AD',
+    400: '#FEA58C',
+    500: '#FD8A6B',  // Main info (same as secondary)
+    600: '#E87756',
+    700: '#D26543',
+    800: '#BC5432',
+    900: '#A64422',
   },
 }
 
@@ -229,17 +253,19 @@ const theme = extendTheme({ config, colors, fonts, styles, components })
 
 // Export theme colors for use in components
 export const themeColors = {
-  primary: '#F4C430',
-  secondary: '#FFE7A3',
-  bg: '#FFFBF3',
+  primary: '#FA5C5C',
+  secondary: '#FD8A6B',
+  accent: '#FEC288',
+  highlight: '#FBEF76',
+  bg: '#FFFDF8',
   surface: '#FFFFFF',
-  textPrimary: '#2E2E2E',
-  textSecondary: '#6B6B6B',
-  border: '#E6D8B8',
-  success: '#4CAF50',
-  warning: '#F2A900',
-  error: '#D64545',
-  info: '#E8C86C',
+  textPrimary: '#2B2B2B',
+  textSecondary: '#6A6A6A',
+  border: '#E9E3D7',
+  success: '#4FAF7B',
+  warning: '#FEC288',
+  error: '#FA5C5C',
+  info: '#FD8A6B',
 }
 
 export default theme
