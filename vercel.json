@@ -5,7 +5,7 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "frontend/dist"
+        "distDir": "dist"
       }
     },
     {
@@ -22,10 +22,5 @@
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }
-  ],
-  "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm install",
-  "buildCommand": "cd frontend && npm run build",
-  "devCommand": "cd frontend && npm run dev",
-  "framework": "vite"
+  ]
 }
