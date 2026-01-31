@@ -264,22 +264,63 @@ const ViewProfile = () => {
           </HStack>
           <HStack>
             {!isOwnProfile && (
-              <Button
-                colorScheme={isFollowing ? 'gray' : 'primary'}
-                onClick={handleFollowToggle}
-                isLoading={followLoading}
-                leftIcon={
-                  <Icon viewBox="0 0 24 24">
-                    {isFollowing ? (
-                      <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                    ) : (
-                      <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                    )}
-                  </Icon>
-                }
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </Button>
+              <>
+                <Button
+                  colorScheme="purple"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession()
+                      if (!session || !profileIdToFetch) return
+
+                      const response = await fetch(
+                        `${import.meta.env.VITE_API_URL}/api/messages/conversations/${profileIdToFetch}`,
+                        {
+                          headers: {
+                            'Authorization': `Bearer ${session.access_token}`,
+                          },
+                        }
+                      )
+
+                      if (response.ok) {
+                        const data = await response.json()
+                        navigate(`/messages/${data.conversation.id}`)
+                      }
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to start conversation',
+                        status: 'error',
+                        duration: 3000,
+                        isClosable: true,
+                      })
+                    }
+                  }}
+                  leftIcon={
+                    <Icon viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                    </Icon>
+                  }
+                >
+                  Message
+                </Button>
+                <Button
+                  colorScheme={isFollowing ? 'gray' : 'primary'}
+                  onClick={handleFollowToggle}
+                  isLoading={followLoading}
+                  leftIcon={
+                    <Icon viewBox="0 0 24 24">
+                      {isFollowing ? (
+                        <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      ) : (
+                        <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      )}
+                    </Icon>
+                  }
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Button>
+              </>
             )}
             {isOwnProfile && (
               <Button

@@ -34,3 +34,26 @@ export interface FormErrors {
   currentSchool?: string
   careerStatus?: string
 }
+
+export interface Message {
+  id: string
+  conversation_id: string
+  sender_id: string
+  content: string
+  is_read: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Conversation {
+  id: string
+  other_user: {
+    id: string
+    name: string
+    profile_picture_url?: string
+  }
+  last_message?: Message
+  unread_count: number
+  created_at: string
+  updated_at: string
+}

@@ -173,10 +173,32 @@ export const NotificationInbox: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
     // Navigate based on notification type
     if (notification.type === 'follow' && notification.related_user) {
       navigate(`/profile/${notification.related_user.id}`);
+    } else if (notification.type === 'message' && notification.related_user) {
+      // Get or create conversation with the message sender
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/messages/conversations/${notification.related_user.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          navigate(`/messages/${data.conversation.id}`);
+        }
+      } catch (error) {
+        console.error('Error opening conversation:', error);
+      }
     }
   };
 
