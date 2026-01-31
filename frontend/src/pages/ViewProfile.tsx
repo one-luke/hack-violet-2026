@@ -94,7 +94,7 @@ const ViewProfile = () => {
   if (loading) {
     return (
       <Center h="calc(100vh - 64px)">
-        <Spinner size="xl" color="purple.500" thickness="4px" />
+        <Spinner size="xl" color="primary.500" thickness="4px" />
       </Center>
     )
   }
@@ -105,7 +105,7 @@ const ViewProfile = () => {
         <Center>
           <VStack spacing={6}>
             <Text fontSize="lg">Profile not found</Text>
-            <Button colorScheme="purple" onClick={() => navigate('/profile/create')}>
+            <Button colorScheme="primary" onClick={() => navigate('/profile/create')}>
               Create Profile
             </Button>
           </VStack>
@@ -121,30 +121,44 @@ const ViewProfile = () => {
           <Heading size="lg">My Profile</Heading>
           <Button
             leftIcon={<EditIcon />}
-            colorScheme="purple"
+            colorScheme="primary"
             onClick={() => navigate('/profile/edit')}
           >
             Edit Profile
           </Button>
         </HStack>
 
-        <Box bg="white" p={8} borderRadius="xl" boxShadow="lg">
+        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
           <VStack spacing={6} align="stretch">
             {/* Header Section */}
             <HStack spacing={6} align="start">
               <Avatar
                 size="2xl"
                 name={profile.full_name}
-                bg="purple.500"
-                color="white"
+                src={profile.profile_picture_url}
+                bg="primary.500"
+                color="text.800"
               />
               <VStack align="start" flex={1} spacing={2}>
                 <Heading size="lg">{profile.full_name}</Heading>
-                <Badge colorScheme="purple" fontSize="md" px={3} py={1} borderRadius="full">
+                <Badge colorScheme="primary" fontSize="md" px={3} py={1} borderRadius="full">
                   {profile.industry}
                 </Badge>
+                {profile.career_status && (
+                  <Badge colorScheme="info" fontSize="sm" px={3} py={1} borderRadius="full">
+                    {profile.career_status === 'in_industry' && '💼 Currently in Industry'}
+                    {profile.career_status === 'seeking_opportunities' && '🔍 Seeking Opportunities'}
+                    {profile.career_status === 'student' && '🎓 Student'}
+                    {profile.career_status === 'career_break' && '✨ Career Break'}
+                  </Badge>
+                )}
+                {profile.current_school && (
+                  <Text color="text.700" fontSize="md" fontWeight="medium">
+                    🎓 {profile.current_school}
+                  </Text>
+                )}
                 {profile.location && (
-                  <Text color="gray.600" fontSize="md">
+                  <Text color="text.500" fontSize="md">
                     📍 {profile.location}
                   </Text>
                 )}
@@ -156,7 +170,7 @@ const ViewProfile = () => {
             {/* Bio Section */}
             <Box>
               <Heading size="md" mb={3}>About</Heading>
-              <Text color="gray.700" whiteSpace="pre-wrap">
+              <Text color="text.700" whiteSpace="pre-wrap">
                 {profile.bio}
               </Text>
             </Box>
@@ -174,7 +188,7 @@ const ViewProfile = () => {
                         size="lg"
                         borderRadius="full"
                         variant="solid"
-                        colorScheme="purple"
+                        colorScheme="primary"
                       >
                         {skill}
                       </Tag>
@@ -190,35 +204,35 @@ const ViewProfile = () => {
               <Heading size="md" mb={3}>Contact & Links</Heading>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                 <Box>
-                  <Text fontWeight="semibold" color="gray.600" fontSize="sm">Email</Text>
+                  <Text fontWeight="semibold" color="text.500" fontSize="sm">Email</Text>
                   <Text>{profile.email}</Text>
                 </Box>
                 {profile.phone && (
                   <Box>
-                    <Text fontWeight="semibold" color="gray.600" fontSize="sm">Phone</Text>
+                    <Text fontWeight="semibold" color="text.500" fontSize="sm">Phone</Text>
                     <Text>{profile.phone}</Text>
                   </Box>
                 )}
                 {profile.linkedin_url && (
                   <Box>
-                    <Text fontWeight="semibold" color="gray.600" fontSize="sm">LinkedIn</Text>
-                    <Link href={profile.linkedin_url} isExternal color="purple.500">
+                    <Text fontWeight="semibold" color="text.500" fontSize="sm">LinkedIn</Text>
+                    <Link href={profile.linkedin_url} isExternal color="primary.700">
                       View Profile <Icon as={ExternalLinkIcon} mx="2px" />
                     </Link>
                   </Box>
                 )}
                 {profile.github_url && (
                   <Box>
-                    <Text fontWeight="semibold" color="gray.600" fontSize="sm">GitHub</Text>
-                    <Link href={profile.github_url} isExternal color="purple.500">
+                    <Text fontWeight="semibold" color="text.500" fontSize="sm">GitHub</Text>
+                    <Link href={profile.github_url} isExternal color="primary.700">
                       View Profile <Icon as={ExternalLinkIcon} mx="2px" />
                     </Link>
                   </Box>
                 )}
                 {profile.portfolio_url && (
                   <Box>
-                    <Text fontWeight="semibold" color="gray.600" fontSize="sm">Portfolio</Text>
-                    <Link href={profile.portfolio_url} isExternal color="purple.500">
+                    <Text fontWeight="semibold" color="text.500" fontSize="sm">Portfolio</Text>
+                    <Link href={profile.portfolio_url} isExternal color="primary.700">
                       Visit Website <Icon as={ExternalLinkIcon} mx="2px" />
                     </Link>
                   </Box>
@@ -235,14 +249,14 @@ const ViewProfile = () => {
                   <HStack>
                     <Button
                       leftIcon={<DownloadIcon />}
-                      colorScheme="purple"
+                      colorScheme="primary"
                       variant="outline"
                       onClick={downloadResume}
                     >
                       Download Resume
                     </Button>
                     {profile.resume_uploaded_at && (
-                      <Text fontSize="sm" color="gray.500">
+                      <Text fontSize="sm" color="text.500">
                         Uploaded {new Date(profile.resume_uploaded_at).toLocaleDateString()}
                       </Text>
                     )}

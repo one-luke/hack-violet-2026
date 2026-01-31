@@ -4,7 +4,7 @@ import Navbar from './Navbar'
 
 const Layout = () => {
   return (
-    <Box minH="100vh" bg="gray.50">
+    <Box minH="100vh" bg="surface.100">
       <Navbar />
       <Box as="main">
         <Outlet />

@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, KeyboardEvent } from 'react'
+import { useState, ChangeEvent, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -30,6 +30,11 @@ import {
   StepTitle,
   Stepper,
   useSteps,
+  Avatar,
+  FormHelperText,
+  Radio,
+  RadioGroup,
+  Stack,
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -74,6 +79,9 @@ const CreateProfile = () => {
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState('')
   const [industry, setIndustry] = useState('')
+  const [customIndustry, setCustomIndustry] = useState('')
+  const [currentSchool, setCurrentSchool] = useState('')
+  const [careerStatus, setCareerStatus] = useState<string>('')
   const [bio, setBio] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
@@ -81,6 +89,47 @@ const CreateProfile = () => {
   const [skills, setSkills] = useState<string[]>([])
   const [currentSkill, setCurrentSkill] = useState('')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [profilePicture, setProfilePicture] = useState<File | null>(null)
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Allow empty phone (optional field)
+    if (!phone.trim()) return true
+    // US/International phone format: +1-234-567-8900, (234) 567-8900, 234-567-8900, etc.
+    const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}$/
+    return phoneRegex.test(phone.replace(/\s/g, ''))
+  }
+
+  const handleProfilePictureChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: 'File too large',
+          description: 'Profile picture must be less than 5MB',
+          status: 'error',
+          duration: 3000,
+        })
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload an image file',
+          status: 'error',
+          duration: 3000,
+        })
+        return
+      }
+      setProfilePicture(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setProfilePicturePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const addSkill = () => {
     if (currentSkill.trim() && !skills.includes(currentSkill.trim())) {
@@ -99,8 +148,15 @@ const CreateProfile = () => {
     if (step === 0) {
       if (!fullName.trim()) newErrors.fullName = 'Full name is required'
       if (!location.trim()) newErrors.location = 'Location is required'
+      if (phone && !validatePhoneNumber(phone)) {
+        newErrors.phone = 'Please enter a valid phone number'
+      }
     } else if (step === 1) {
       if (!industry) newErrors.industry = 'Industry/field is required'
+      if (industry === 'Other' && !customIndustry.trim()) {
+        newErrors.customIndustry = 'Please specify your industry'
+      }
+      if (!careerStatus) newErrors.careerStatus = 'Career status is required'
       if (!bio.trim()) newErrors.bio = 'Bio is required'
       if (bio.trim().length < 50) newErrors.bio = 'Bio should be at least 50 characters'
     }
@@ -117,6 +173,30 @@ const CreateProfile = () => {
 
   const handleBack = () => {
     setActiveStep(activeStep - 1)
+  }
+
+  const uploadProfilePicture = async (): Promise<string | null> => {
+    if (!profilePicture) return null
+
+    const fileExt = profilePicture.name.split('.').pop()
+    const fileName = `${user!.id}_${Date.now()}.${fileExt}`
+    const filePath = `${user!.id}/${fileName}`
+
+    const { error } = await supabase.storage
+      .from('profile-pictures')
+      .upload(filePath, profilePicture, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) throw error
+    
+    // Get public URL
+    const { data } = supabase.storage
+      .from('profile-pictures')
+      .getPublicUrl(filePath)
+    
+    return data.publicUrl
   }
 
   const uploadResume = async (): Promise<{ fileName: string; filePath: string } | null> => {
@@ -146,6 +226,11 @@ const CreateProfile = () => {
 
     try {
       let resumeData = {}
+      let profilePictureUrl = null
+      
+      if (profilePicture) {
+        profilePictureUrl = await uploadProfilePicture()
+      }
       
       if (resumeFile) {
         const result = await uploadResume()
@@ -168,11 +253,15 @@ const CreateProfile = () => {
             full_name: fullName,
             phone: phone || null,
             location,
-            industry,
+            industry: industry === 'Other' ? customIndustry : industry,
+            custom_industry: industry === 'Other' ? customIndustry : null,
+            current_school: currentSchool || null,
+            career_status: careerStatus || null,
             bio,
             linkedin_url: linkedinUrl || null,
             github_url: githubUrl || null,
             portfolio_url: portfolioUrl || null,
+            profile_picture_url: profilePictureUrl,
             skills,
             ...resumeData,
           },
@@ -208,12 +297,12 @@ const CreateProfile = () => {
       <VStack spacing={8} align="stretch">
         <Box textAlign="center">
           <Heading size="lg" mb={2}>Create Your Profile</Heading>
-          <Text color="gray.600">
+          <Text color="text.500">
             Let's set up your profile to connect with other professionals
           </Text>
         </Box>
 
-        <Stepper index={activeStep} colorScheme="purple">
+        <Stepper index={activeStep} colorScheme="primary">
           {steps.map((step, index) => (
             <Step key={index}>
               <StepIndicator>
@@ -234,9 +323,40 @@ const CreateProfile = () => {
           ))}
         </Stepper>
 
-        <Box bg="white" p={8} borderRadius="xl" boxShadow="lg">
+        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
           {activeStep === 0 && (
             <VStack spacing={5}>
+              <FormControl>
+                <FormLabel textAlign="center">Profile Picture</FormLabel>
+                <VStack spacing={3}>
+                  <Avatar
+                    size="2xl"
+                    src={profilePicturePreview}
+                    name={fullName}
+                    cursor="pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  />
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureChange}
+                    display="none"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    colorScheme="primary"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Upload Photo
+                  </Button>
+                  <Text fontSize="xs" color="text.500">
+                    Max 5MB • JPG, PNG, or GIF
+                  </Text>
+                </VStack>
+              </FormControl>
+
               <FormControl isInvalid={!!errors.fullName}>
                 <FormLabel>Full Name *</FormLabel>
                 <Input
@@ -248,7 +368,7 @@ const CreateProfile = () => {
                 <FormErrorMessage>{errors.fullName}</FormErrorMessage>
               </FormControl>
 
-              <FormControl>
+              <FormControl isInvalid={!!errors.phone}>
                 <FormLabel>Phone Number</FormLabel>
                 <Input
                   value={phone}
@@ -256,6 +376,10 @@ const CreateProfile = () => {
                   placeholder="+1 (555) 123-4567"
                   size="lg"
                 />
+                <FormHelperText>
+                  Optional - Format: +1 234-567-8900 or (234) 567-8900
+                </FormHelperText>
+                <FormErrorMessage>{errors.phone}</FormErrorMessage>
               </FormControl>
 
               <FormControl isInvalid={!!errors.location}>
@@ -290,6 +414,65 @@ const CreateProfile = () => {
                 <FormErrorMessage>{errors.industry}</FormErrorMessage>
               </FormControl>
 
+              {industry === 'Other' && (
+                <FormControl isInvalid={!!errors.customIndustry}>
+                  <FormLabel>Specify Your Industry *</FormLabel>
+                  <Input
+                    value={customIndustry}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomIndustry(e.target.value)}
+                    placeholder="e.g., Environmental Science, Biomedical Engineering"
+                    size="lg"
+                  />
+                  <FormErrorMessage>{errors.customIndustry}</FormErrorMessage>
+                </FormControl>
+              )}
+
+              <FormControl>
+                <FormLabel>Current School</FormLabel>
+                <Input
+                  value={currentSchool}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSchool(e.target.value)}
+                  placeholder="e.g., MIT, Stanford University"
+                  size="lg"
+                />
+                <FormHelperText>
+                  Optional - Current or most recent school
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl isInvalid={!!errors.careerStatus}>
+                <FormLabel>Career Status *</FormLabel>
+                <RadioGroup value={careerStatus} onChange={setCareerStatus}>
+                  <Stack spacing={3}>
+                    <Radio value="in_industry" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Currently in Industry</Text>
+                        <Text fontSize="sm" color="gray.600">Working in my field</Text>
+                      </VStack>
+                    </Radio>
+                    <Radio value="seeking_opportunities" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Seeking Opportunities</Text>
+                        <Text fontSize="sm" color="gray.600">Actively looking for positions</Text>
+                      </VStack>
+                    </Radio>
+                    <Radio value="student" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Student</Text>
+                        <Text fontSize="sm" color="gray.600">Currently studying</Text>
+                      </VStack>
+                    </Radio>
+                    <Radio value="career_break" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Career Break</Text>
+                        <Text fontSize="sm" color="gray.600">Taking time off</Text>
+                      </VStack>
+                    </Radio>
+                  </Stack>
+                </RadioGroup>
+                <FormErrorMessage>{errors.careerStatus}</FormErrorMessage>
+              </FormControl>
+
               <FormControl isInvalid={!!errors.bio}>
                 <FormLabel>Bio *</FormLabel>
                 <Textarea
@@ -299,7 +482,7 @@ const CreateProfile = () => {
                   rows={6}
                   size="lg"
                 />
-                <Text fontSize="xs" color="gray.500" mt={1}>
+                <Text fontSize="xs" color="text.500" mt={1}>
                   {bio.length} characters (minimum 50)
                 </Text>
                 <FormErrorMessage>{errors.bio}</FormErrorMessage>
@@ -311,16 +494,10 @@ const CreateProfile = () => {
                   <Input
                     value={currentSkill}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSkill(e.target.value)}
-                    onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        addSkill()
-                      }
-                    }}
                     placeholder="e.g., Python, Machine Learning, Leadership"
                     size="lg"
                   />
-                  <Button onClick={addSkill} colorScheme="purple">
+                  <Button onClick={addSkill} colorScheme="primary">
                     Add
                   </Button>
                 </HStack>
@@ -332,7 +509,7 @@ const CreateProfile = () => {
                         size="lg"
                         borderRadius="full"
                         variant="solid"
-                        colorScheme="purple"
+                        colorScheme="primary"
                       >
                         <TagLabel>{skill}</TagLabel>
                         <TagCloseButton onClick={() => removeSkill(skill)} />
@@ -379,7 +556,7 @@ const CreateProfile = () => {
             <VStack spacing={5}>
               <FormControl>
                 <FormLabel>Upload Resume (Optional)</FormLabel>
-                <Text fontSize="sm" color="gray.600" mb={4}>
+                <Text fontSize="sm" color="text.500" mb={4}>
                   Upload your resume to make it easier for others to learn about your experience
                 </Text>
                 <ResumeUpload
@@ -388,8 +565,8 @@ const CreateProfile = () => {
                 />
               </FormControl>
 
-              <Box p={4} bg="purple.50" borderRadius="lg" w="full">
-                <Text fontSize="sm" color="purple.800">
+              <Box p={4} bg="info.100" borderRadius="lg" w="full" borderWidth="1px" borderColor="info.300">
+                <Text fontSize="sm" color="text.700">
                   <strong>Privacy Note:</strong> Your resume will be stored securely and only visible to authenticated members of the platform.
                 </Text>
               </Box>
@@ -406,13 +583,13 @@ const CreateProfile = () => {
             </Button>
 
             {activeStep < steps.length - 1 ? (
-              <Button onClick={handleNext} colorScheme="purple">
+              <Button onClick={handleNext} colorScheme="primary">
                 Next
               </Button>
             ) : (
               <Button
                 onClick={handleSubmit}
-                colorScheme="purple"
+                colorScheme="primary"
                 isLoading={loading}
                 loadingText="Creating profile..."
               >

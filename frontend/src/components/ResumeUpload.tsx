@@ -73,26 +73,26 @@ const ResumeUpload = ({ onFileSelect, currentFile }: ResumeUploadProps) => {
           {...getRootProps()}
           p={8}
           border="2px dashed"
-          borderColor={isDragActive ? 'purple.400' : 'gray.300'}
+          borderColor={isDragActive ? 'primary.400' : 'border.300'}
           borderRadius="lg"
-          bg={isDragActive ? 'purple.50' : 'gray.50'}
+          bg={isDragActive ? 'secondary.200' : 'surface.100'}
           cursor="pointer"
           transition="all 0.2s"
           _hover={{
-            borderColor: 'purple.400',
-            bg: 'purple.50',
+            borderColor: 'primary.400',
+            bg: 'secondary.200',
           }}
         >
           <input {...getInputProps()} />
           <VStack spacing={3}>
-            <Icon as={AttachmentIcon} w={10} h={10} color="gray.400" />
-            <Text fontSize="lg" fontWeight="medium" color="gray.700">
+            <Icon as={AttachmentIcon} w={10} h={10} color="text.400" />
+            <Text fontSize="lg" fontWeight="medium" color="text.700">
               {isDragActive ? 'Drop your resume here' : 'Drag & drop your resume here'}
             </Text>
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color="text.500">
               or click to browse
             </Text>
-            <Text fontSize="xs" color="gray.400">
+            <Text fontSize="xs" color="text.400">
               PDF or Word document, up to 5MB
             </Text>
           </VStack>
@@ -101,18 +101,18 @@ const ResumeUpload = ({ onFileSelect, currentFile }: ResumeUploadProps) => {
         <Box
           p={4}
           border="1px solid"
-          borderColor="green.200"
+          borderColor="success.200"
           borderRadius="lg"
-          bg="green.50"
+          bg="success.50"
         >
           <HStack justify="space-between">
             <HStack spacing={3}>
-              <Icon as={CheckCircleIcon} color="green.500" w={5} h={5} />
+              <Icon as={CheckCircleIcon} color="success.500" w={5} h={5} />
               <VStack align="start" spacing={0}>
-                <Text fontSize="sm" fontWeight="medium" color="gray.700">
+                <Text fontSize="sm" fontWeight="medium" color="text.700">
                   {selectedFile.name}
                 </Text>
-                <Text fontSize="xs" color="gray.500">
+                <Text fontSize="xs" color="text.500">
                   {(selectedFile.size / 1024).toFixed(2)} KB
                 </Text>
               </VStack>
@@ -120,7 +120,7 @@ const ResumeUpload = ({ onFileSelect, currentFile }: ResumeUploadProps) => {
             <Button
               size="sm"
               variant="ghost"
-              colorScheme="red"
+              colorScheme="error"
               leftIcon={<CloseIcon />}
               onClick={removeFile}
             >

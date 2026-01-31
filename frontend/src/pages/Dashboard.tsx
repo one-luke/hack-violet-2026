@@ -74,7 +74,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <Center h="calc(100vh - 64px)">
-        <Spinner size="xl" color="purple.500" thickness="4px" />
+        <Spinner size="xl" color="primary.500" thickness="4px" />
       </Center>
     )
   }
@@ -88,12 +88,12 @@ const Dashboard = () => {
               <Heading size="lg" mb={3}>
                 Welcome to Aurelia!
               </Heading>
-              <Text color="gray.600" fontSize="lg">
+              <Text color="text.500" fontSize="lg">
                 Let's create your profile to get started
               </Text>
             </Box>
             <Button
-              colorScheme="purple"
+              colorScheme="primary"
               size="lg"
               onClick={() => navigate('/profile/create')}
             >
@@ -112,15 +112,15 @@ const Dashboard = () => {
           <Heading size="lg" mb={2}>
             Welcome back, {profile.full_name}!
           </Heading>
-          <Text color="gray.600" fontSize="lg">
+          <Text color="text.500" fontSize="lg">
             Your dashboard
           </Text>
         </Box>
 
-        <Box bg="white" p={8} borderRadius="xl" boxShadow="lg">
+        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
           <VStack spacing={4} align="stretch">
             <Button
-              colorScheme="purple"
+              colorScheme="primary"
               size="lg"
               onClick={() => navigate('/profile')}
             >
@@ -128,7 +128,7 @@ const Dashboard = () => {
             </Button>
             <Button
               variant="outline"
-              colorScheme="purple"
+              colorScheme="primary"
               size="lg"
               onClick={() => navigate('/profile/edit')}
             >
@@ -137,15 +137,15 @@ const Dashboard = () => {
           </VStack>
         </Box>
 
-        <Box bg="purple.50" p={6} borderRadius="lg">
+        <Box bg="secondary.200" p={6} borderRadius="lg" borderWidth="1px" borderColor="border.300">
           <Heading size="md" mb={3}>
             Coming Soon
           </Heading>
           <VStack align="start" spacing={2}>
-            <Text color="gray.700">• Connect with other professionals</Text>
-            <Text color="gray.700">• Join and create events</Text>
-            <Text color="gray.700">• Send messages to your network</Text>
-            <Text color="gray.700">• Find mentorship opportunities</Text>
+            <Text color="text.700">• Connect with other professionals</Text>
+            <Text color="text.700">• Join and create events</Text>
+            <Text color="text.700">• Send messages to your network</Text>
+            <Text color="text.700">• Find mentorship opportunities</Text>
           </VStack>
         </Box>
       </VStack>

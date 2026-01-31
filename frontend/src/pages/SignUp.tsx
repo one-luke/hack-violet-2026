@@ -110,12 +110,12 @@ const SignUp = () => {
         <VStack spacing={2} textAlign="center">
           <Heading
             fontSize={{ base: '2xl', md: '3xl' }}
-            bgGradient="linear(to-r, purple.400, purple.600)"
+            bgGradient="linear(to-r, primary.500, primary.700)"
             bgClip="text"
           >
             Join Aurelia
           </Heading>
-          <Text color="gray.600" fontSize="lg">
+          <Text color="text.500" fontSize="lg">
             Connect with women in male-dominated fields
           </Text>
         </VStack>
@@ -123,9 +123,11 @@ const SignUp = () => {
         <Box
           py={{ base: '8', sm: '10' }}
           px={{ base: '4', sm: '10' }}
-          bg="white"
+          bg="surface.500"
           boxShadow="xl"
           borderRadius="xl"
+          borderWidth="1px"
+          borderColor="border.300"
           w="full"
         >
           <form onSubmit={handleSubmit}>
@@ -177,7 +179,7 @@ const SignUp = () => {
 
               <Button
                 type="submit"
-                colorScheme="purple"
+                colorScheme="primary"
                 size="lg"
                 w="full"
                 isLoading={loading}
@@ -188,9 +190,9 @@ const SignUp = () => {
             </VStack>
           </form>
 
-          <Text mt={6} textAlign="center" color="gray.600">
+          <Text mt={6} textAlign="center" color="text.500">
             Already have an account?{' '}
-            <Link as={RouterLink} to="/signin" color="purple.500" fontWeight="semibold">
+            <Link as={RouterLink} to="/signin" color="primary.700" fontWeight="semibold">
               Sign in
             </Link>
           </Text>

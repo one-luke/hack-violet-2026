@@ -20,8 +20,8 @@ import { useAuth } from '../context/AuthContext'
 const Navbar = () => {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
-  const bg = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.700')
+  const bg = useColorModeValue('surface.500', 'gray.800')
+  const borderColor = useColorModeValue('border.300', 'gray.700')
 
   const handleSignOut = async () => {
     await signOut()
@@ -36,7 +36,7 @@ const Navbar = () => {
             <Text
               fontSize="xl"
               fontWeight="bold"
-              bgGradient="linear(to-r, purple.400, purple.600)"
+              bgGradient="linear(to-r, primary.500, primary.700)"
               bgClip="text"
               cursor="pointer"
               onClick={() => navigate('/dashboard')}
@@ -58,16 +58,16 @@ const Navbar = () => {
                   <Avatar
                     size="sm"
                     name={user?.user_metadata?.full_name || user?.email}
-                    bg="purple.500"
+                    bg="primary.500"
                   />
                   <ChevronDownIcon />
                 </HStack>
               </MenuButton>
-              <MenuList>
-                <MenuItem onClick={() => navigate('/profile')}>My Profile</MenuItem>
-                <MenuItem onClick={() => navigate('/profile/edit')}>Edit Profile</MenuItem>
-                <MenuDivider />
-                <MenuItem onClick={handleSignOut}>Sign Out</MenuItem>
+              <MenuList bg="surface.500" borderColor="border.300">
+                <MenuItem onClick={() => navigate('/profile')} _hover={{ bg: 'secondary.200' }}>My Profile</MenuItem>
+                <MenuItem onClick={() => navigate('/profile/edit')} _hover={{ bg: 'secondary.200' }}>Edit Profile</MenuItem>
+                <MenuDivider borderColor="border.300" />
+                <MenuItem onClick={handleSignOut} _hover={{ bg: 'secondary.200' }}>Sign Out</MenuItem>
               </MenuList>
             </Menu>
           </Flex>

@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
+import { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -22,6 +22,11 @@ import {
   Divider,
   Center,
   Spinner,
+  Avatar,
+  FormHelperText,
+  Radio,
+  RadioGroup,
+  Stack,
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -61,6 +66,9 @@ const EditProfile = () => {
   const [phone, setPhone] = useState('')
   const [location, setLocation] = useState('')
   const [industry, setIndustry] = useState('')
+  const [customIndustry, setCustomIndustry] = useState('')
+  const [currentSchool, setCurrentSchool] = useState('')
+  const [careerStatus, setCareerStatus] = useState<string>('')
   const [bio, setBio] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
@@ -69,6 +77,10 @@ const EditProfile = () => {
   const [currentSkill, setCurrentSkill] = useState('')
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [existingResume, setExistingResume] = useState<ExistingResume | null>(null)
+  const [profilePicture, setProfilePicture] = useState<File | null>(null)
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string>('')
+  const [existingProfilePicture, setExistingProfilePicture] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchProfile()
@@ -89,11 +101,16 @@ const EditProfile = () => {
       setPhone(profile.phone || '')
       setLocation(profile.location || '')
       setIndustry(profile.industry || '')
+      setCustomIndustry(profile.custom_industry || '')
+      setCurrentSchool(profile.current_school || '')
+      setCareerStatus(profile.career_status || '')
       setBio(profile.bio || '')
       setLinkedinUrl(profile.linkedin_url || '')
       setGithubUrl(profile.github_url || '')
       setPortfolioUrl(profile.portfolio_url || '')
       setSkills(profile.skills || [])
+      setExistingProfilePicture(profile.profile_picture_url || '')
+      setProfilePicturePreview(profile.profile_picture_url || '')
       
       if (profile.resume_filepath) {
         setExistingResume({
@@ -116,6 +133,42 @@ const EditProfile = () => {
     }
   }
 
+  const validatePhoneNumber = (phone: string): boolean => {
+    if (!phone.trim()) return true
+    const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}$/
+    return phoneRegex.test(phone.replace(/\s/g, ''))
+  }
+
+  const handleProfilePictureChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'Profile picture must be less than 5MB',
+          status: 'error',
+          duration: 3000,
+        })
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload an image file',
+          status: 'error',
+          duration: 3000,
+        })
+        return
+      }
+      setProfilePicture(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setProfilePicturePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const addSkill = () => {
     if (currentSkill.trim() && !skills.includes(currentSkill.trim())) {
       setSkills([...skills, currentSkill.trim()])
@@ -133,11 +186,48 @@ const EditProfile = () => {
     if (!fullName.trim()) newErrors.fullName = 'Full name is required'
     if (!location.trim()) newErrors.location = 'Location is required'
     if (!industry) newErrors.industry = 'Industry/field is required'
+    if (industry === 'Other' && !customIndustry.trim()) {
+      newErrors.customIndustry = 'Please specify your industry'
+    }
+    if (phone && !validatePhoneNumber(phone)) {
+      newErrors.phone = 'Please enter a valid phone number'
+    }
     if (!bio.trim()) newErrors.bio = 'Bio is required'
     if (bio.trim().length < 50) newErrors.bio = 'Bio should be at least 50 characters'
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  const uploadProfilePicture = async (): Promise<string | null> => {
+    if (!profilePicture) return null
+
+    // Delete old profile picture if exists
+    if (existingProfilePicture) {
+      const oldPath = existingProfilePicture.split('/profile-pictures/')[1]
+      if (oldPath) {
+        await supabase.storage.from('profile-pictures').remove([oldPath])
+      }
+    }
+
+    const fileExt = profilePicture.name.split('.').pop()
+    const fileName = `${user!.id}_${Date.now()}.${fileExt}`
+    const filePath = `${user!.id}/${fileName}`
+
+    const { error } = await supabase.storage
+      .from('profile-pictures')
+      .upload(filePath, profilePicture, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) throw error
+    
+    const { data } = supabase.storage
+      .from('profile-pictures')
+      .getPublicUrl(filePath)
+    
+    return data.publicUrl
   }
 
   const uploadResume = async (): Promise<{ fileName: string; filePath: string } | null> => {
@@ -174,6 +264,12 @@ const EditProfile = () => {
 
     try {
       let resumeData = {}
+      let profilePictureUrl = existingProfilePicture
+      
+      if (profilePicture) {
+        const newUrl = await uploadProfilePicture()
+        if (newUrl) profilePictureUrl = newUrl
+      }
       
       if (resumeFile) {
         const result = await uploadResume()
@@ -193,11 +289,15 @@ const EditProfile = () => {
           full_name: fullName,
           phone: phone || null,
           location,
-          industry,
+          industry: industry === 'Other' ? customIndustry : industry,
+          custom_industry: industry === 'Other' ? customIndustry : null,
+          current_school: currentSchool || null,
+          career_status: careerStatus || null,
           bio,
           linkedin_url: linkedinUrl || null,
           github_url: githubUrl || null,
           portfolio_url: portfolioUrl || null,
+          profile_picture_url: profilePictureUrl,
           skills,
           ...resumeData,
           updated_at: new Date().toISOString(),
@@ -232,7 +332,7 @@ const EditProfile = () => {
   if (loading) {
     return (
       <Center h="calc(100vh - 64px)">
-        <Spinner size="xl" color="purple.500" thickness="4px" />
+        <Spinner size="xl" color="primary.500" thickness="4px" />
       </Center>
     )
   }
@@ -242,14 +342,52 @@ const EditProfile = () => {
       <VStack spacing={8} align="stretch">
         <Box>
           <Heading size="lg" mb={2}>Edit Profile</Heading>
-          <Text color="gray.600">
+          <Text color="text.500">
             Update your profile information
           </Text>
         </Box>
 
-        <Box bg="white" p={8} borderRadius="xl" boxShadow="lg">
-          <form onSubmit={handleSubmit}>
+        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
+          <form 
+            onSubmit={handleSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+              }
+            }}
+          >
             <VStack spacing={5}>
+              <FormControl>
+                <FormLabel textAlign="center">Profile Picture</FormLabel>
+                <VStack spacing={3}>
+                  <Avatar
+                    size="2xl"
+                    src={profilePicturePreview}
+                    name={fullName}
+                    cursor="pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  />
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureChange}
+                    display="none"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    colorScheme="primary"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Change Photo
+                  </Button>
+                  <Text fontSize="xs" color="text.500">
+                    Max 5MB • JPG, PNG, or GIF
+                  </Text>
+                </VStack>
+              </FormControl>
+
               <FormControl isInvalid={!!errors.fullName}>
                 <FormLabel>Full Name *</FormLabel>
                 <Input
@@ -261,7 +399,7 @@ const EditProfile = () => {
                 <FormErrorMessage>{errors.fullName}</FormErrorMessage>
               </FormControl>
 
-              <FormControl>
+              <FormControl isInvalid={!!errors.phone}>
                 <FormLabel>Phone Number</FormLabel>
                 <Input
                   value={phone}
@@ -269,6 +407,10 @@ const EditProfile = () => {
                   placeholder="+1 (555) 123-4567"
                   size="lg"
                 />
+                <FormHelperText>
+                  Optional - Format: +1 234-567-8900 or (234) 567-8900
+                </FormHelperText>
+                <FormErrorMessage>{errors.phone}</FormErrorMessage>
               </FormControl>
 
               <FormControl isInvalid={!!errors.location}>
@@ -301,6 +443,64 @@ const EditProfile = () => {
                 <FormErrorMessage>{errors.industry}</FormErrorMessage>
               </FormControl>
 
+              {industry === 'Other' && (
+                <FormControl isInvalid={!!errors.customIndustry}>
+                  <FormLabel>Specify Your Industry *</FormLabel>
+                  <Input
+                    value={customIndustry}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomIndustry(e.target.value)}
+                    placeholder="e.g., Environmental Science, Biomedical Engineering"
+                    size="lg"
+                  />
+                  <FormErrorMessage>{errors.customIndustry}</FormErrorMessage>
+                </FormControl>
+              )}
+
+              <FormControl>
+                <FormLabel>Current School</FormLabel>
+                <Input
+                  value={currentSchool}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSchool(e.target.value)}
+                  placeholder="e.g., MIT, Stanford University"
+                  size="lg"
+                />
+                <FormHelperText>
+                  Optional - Current or most recent school
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Career Status</FormLabel>
+                <RadioGroup value={careerStatus} onChange={setCareerStatus}>
+                  <Stack spacing={3}>
+                    <Radio value="in_industry" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Currently in Industry</Text>
+                        <Text fontSize="sm" color="gray.600">Working in my field</Text>
+                      </VStack>
+                    </Radio>
+                    <Radio value="seeking_opportunities" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Seeking Opportunities</Text>
+                        <Text fontSize="sm" color="gray.600">Actively looking for positions</Text>
+                      </VStack>
+                    </Radio>
+                    <Radio value="student" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Student</Text>
+                        <Text fontSize="sm" color="gray.600">Currently studying</Text>
+                      </VStack>
+                    </Radio>
+                    <Radio value="career_break" size="lg">
+                      <VStack align="start" spacing={0}>
+                        <Text fontWeight="medium">Career Break</Text>
+                        <Text fontSize="sm" color="gray.600">Taking time off</Text>
+                      </VStack>
+                    </Radio>
+                  </Stack>
+                </RadioGroup>
+              </FormControl>
+
               <FormControl isInvalid={!!errors.bio}>
                 <FormLabel>Bio *</FormLabel>
                 <Textarea
@@ -310,7 +510,7 @@ const EditProfile = () => {
                   rows={6}
                   size="lg"
                 />
-                <Text fontSize="xs" color="gray.500" mt={1}>
+                <Text fontSize="xs" color="text.500" mt={1}>
                   {bio.length} characters (minimum 50)
                 </Text>
                 <FormErrorMessage>{errors.bio}</FormErrorMessage>
@@ -322,16 +522,10 @@ const EditProfile = () => {
                   <Input
                     value={currentSkill}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSkill(e.target.value)}
-                    onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        addSkill()
-                      }
-                    }}
                     placeholder="e.g., Python, Machine Learning"
                     size="lg"
                   />
-                  <Button onClick={addSkill} colorScheme="purple">
+                  <Button onClick={addSkill} colorScheme="primary">
                     Add
                   </Button>
                 </HStack>
@@ -343,7 +537,7 @@ const EditProfile = () => {
                         size="lg"
                         borderRadius="full"
                         variant="solid"
-                        colorScheme="purple"
+                        colorScheme="primary"
                       >
                         <TagLabel>{skill}</TagLabel>
                         <TagCloseButton onClick={() => removeSkill(skill)} />
@@ -391,7 +585,7 @@ const EditProfile = () => {
                   {existingResume ? 'Replace Resume' : 'Upload Resume'}
                 </FormLabel>
                 {existingResume && !resumeFile && (
-                  <Text fontSize="sm" color="gray.600" mb={3}>
+                  <Text fontSize="sm" color="text.500" mb={3}>
                     Current: {existingResume.name}
                   </Text>
                 )}
@@ -412,7 +606,7 @@ const EditProfile = () => {
                 </Button>
                 <Button
                   type="submit"
-                  colorScheme="purple"
+                  colorScheme="primary"
                   size="lg"
                   flex={1}
                   isLoading={saving}
