@@ -19,7 +19,7 @@ import {
   Icon,
   Tag,
 } from '@chakra-ui/react'
-import { ExternalLinkIcon, EditIcon, DownloadIcon, ArrowBackIcon } from '@chakra-ui/icons'
+import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Profile } from '../types'
@@ -31,6 +31,10 @@ const ViewProfile = () => {
   const toast = useToast()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followersCount, setFollowersCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [followLoading, setFollowLoading] = useState(false)
   
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !userId || userId === user?.id
@@ -38,6 +42,12 @@ const ViewProfile = () => {
 
   useEffect(() => {
     fetchProfile()
+    if (!isOwnProfile && profileIdToFetch) {
+      fetchFollowStatus()
+    }
+    if (profileIdToFetch) {
+      fetchFollowStats()
+    }
   }, [userId, user])
 
   const fetchProfile = async () => {
@@ -86,6 +96,99 @@ const ViewProfile = () => {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchFollowStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || !profileIdToFetch) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/follows/is-following/${profileIdToFetch}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setIsFollowing(data.is_following)
+      }
+    } catch (error) {
+      console.error('Error fetching follow status:', error)
+    }
+  }
+
+  const fetchFollowStats = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || !profileIdToFetch) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/follows/stats/${profileIdToFetch}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setFollowersCount(data.followers_count)
+        setFollowingCount(data.following_count)
+      }
+    } catch (error) {
+      console.error('Error fetching follow stats:', error)
+    }
+  }
+
+  const handleFollowToggle = async () => {
+    if (!profileIdToFetch || isOwnProfile) return
+
+    setFollowLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const endpoint = isFollowing
+        ? `${import.meta.env.VITE_API_URL}/api/follows/unfollow/${profileIdToFetch}`
+        : `${import.meta.env.VITE_API_URL}/api/follows/follow/${profileIdToFetch}`
+
+      const response = await fetch(endpoint, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) throw new Error(isFollowing ? 'Failed to unfollow' : 'Failed to follow')
+
+      setIsFollowing(!isFollowing)
+      setFollowersCount((prev) => isFollowing ? prev - 1 : prev + 1)
+      
+      toast({
+        title: isFollowing ? 'Unfollowed' : 'Following',
+        description: isFollowing
+          ? `You unfollowed ${profile?.full_name}`
+          : `You are now following ${profile?.full_name}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+    } finally {
+      setFollowLoading(false)
     }
   }
 
@@ -159,15 +262,35 @@ const ViewProfile = () => {
             )}
             <Heading size="lg">{isOwnProfile ? 'My Profile' : `${profile.full_name}'s Profile`}</Heading>
           </HStack>
-          {isOwnProfile && (
-            <Button
-              leftIcon={<EditIcon />}
-              colorScheme="primary"
-              onClick={() => navigate('/profile/edit')}
-            >
-              Edit Profile
-            </Button>
-          )}
+          <HStack>
+            {!isOwnProfile && (
+              <Button
+                colorScheme={isFollowing ? 'gray' : 'primary'}
+                onClick={handleFollowToggle}
+                isLoading={followLoading}
+                leftIcon={
+                  <Icon viewBox="0 0 24 24">
+                    {isFollowing ? (
+                      <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    ) : (
+                      <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    )}
+                  </Icon>
+                }
+              >
+                {isFollowing ? 'Following' : 'Follow'}
+              </Button>
+            )}
+            {isOwnProfile && (
+              <Button
+                leftIcon={<EditIcon />}
+                colorScheme="primary"
+                onClick={() => navigate('/profile/edit')}
+              >
+                Edit Profile
+              </Button>
+            )}
+          </HStack>
         </HStack>
 
         <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
@@ -183,6 +306,14 @@ const ViewProfile = () => {
               />
               <VStack align="start" flex={1} spacing={2}>
                 <Heading size="lg">{profile.full_name}</Heading>
+                <HStack spacing={4}>
+                  <Text fontSize="sm" color="text.600">
+                    <Text as="span" fontWeight="bold">{followersCount}</Text> followers
+                  </Text>
+                  <Text fontSize="sm" color="text.600">
+                    <Text as="span" fontWeight="bold">{followingCount}</Text> following
+                  </Text>
+                </HStack>
                 <Badge colorScheme="primary" fontSize="md" px={3} py={1} borderRadius="full">
                   {profile.industry}
                 </Badge>

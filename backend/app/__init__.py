@@ -23,8 +23,13 @@ def create_app():
     
     # Register blueprints
     from app.routes import profile, auth
+    from app.routes.follows import follows_bp
+    from app.routes.notifications import notifications_bp
+    
     app.register_blueprint(profile.bp)
     app.register_blueprint(auth.bp)
+    app.register_blueprint(follows_bp, url_prefix='/api/follows')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     
     @app.route('/health')
     def health():
