@@ -94,17 +94,21 @@ export default function Search() {
       if (selectedCareerStatus) params.append('career_status', selectedCareerStatus)
       selectedSkills.forEach(skill => params.append('skills', skill))
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/profile/search?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      )
+      const apiUrl = `${import.meta.env.VITE_API_URL}/api/profile/search?${params.toString()}`
+      console.log('Fetching profiles from:', apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
 
+      console.log('Response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error('Failed to search profiles')
+        const errorText = await response.text()
+        console.error('Search error:', errorText)
+        throw new Error(`Failed to search profiles: ${response.status} ${errorText}`)
       }
 
       const data = await response.json()

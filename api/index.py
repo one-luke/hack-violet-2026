@@ -8,9 +8,5 @@ from app import create_app
 
 app = create_app()
 
-# Vercel serverless function handler
-def handler(request, response):
-    return app(request, response)
-
-# Export the app for Vercel
-# Vercel will use this as the WSGI application
+# For Vercel serverless functions, the app itself is the handler
+# Vercel's Python runtime will call this directly
