@@ -58,6 +58,13 @@ const Navbar = () => {
               >
                 Search
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/messages')}
+                _hover={{ bg: 'secondary.200' }}
+              >
+                Messages
+              </Button>
             </HStack>
           </HStack>
 

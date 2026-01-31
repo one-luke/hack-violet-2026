@@ -2,10 +2,22 @@
 
 ## Database Setup
 
+Run migrations in order in your Supabase SQL Editor:
+
 1. Go to your Supabase project dashboard
 2. Navigate to **SQL Editor**
-3. Copy and paste the contents of `migrations/001_initial_schema.sql`
-4. Click **Run** to execute the SQL
+3. Run each migration file in sequence:
+   - `migrations/001_initial_schema.sql` - Initial profiles table
+   - `migrations/002_add_profile_features.sql` - Add profile features
+   - `migrations/003_add_follows_and_notifications.sql` - Add follows & notifications
+   - `migrations/004_add_messaging.sql` - **NEW: Add messaging system**
+4. Click **Run** to execute each SQL file
+
+For each migration:
+- Copy the contents of the file
+- Paste into SQL Editor
+- Click **Run**
+- Verify success before moving to the next migration
 
 ## Storage Setup
 
