@@ -31,7 +31,7 @@ CAREER_STATUS_MAP = {
 def _build_prompt(query: str) -> str:
     return (
         "You are a parser that extracts structured search filters from a natural "
-        "language query for a professional network. Return ONLY valid JSON.\n\n"
+        "language query for a professional network. Return ONLY valid JSON. Here are some extra condtions. If the the input has 'at' then they are talking about school, if they say 'in' it refers to location\n\n"
         "Allowed fields:\n"
         '- "text_query": string (extra terms that do not map to filters)\n'
         '- "industry": string\n'
