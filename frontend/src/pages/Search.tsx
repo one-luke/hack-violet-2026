@@ -94,7 +94,9 @@ export default function Search() {
       if (selectedCareerStatus) params.append('career_status', selectedCareerStatus)
       selectedSkills.forEach(skill => params.append('skills', skill))
 
-      const apiUrl = `${import.meta.env.VITE_API_URL}/api/profile/search?${params.toString()}`
+      // Handle VITE_API_URL: empty/undefined = relative path, otherwise use as prefix
+      const apiBase = import.meta.env.VITE_API_URL || ''
+      const apiUrl = `${apiBase}/api/profile/search?${params.toString()}`
       console.log('Fetching profiles from:', apiUrl)
       
       const response = await fetch(apiUrl, {
