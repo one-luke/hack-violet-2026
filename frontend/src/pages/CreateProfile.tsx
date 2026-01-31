@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, ChangeEvent, KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -20,7 +20,6 @@ import {
   TagCloseButton,
   HStack,
   Divider,
-  Progress,
   Step,
   StepDescription,
   StepIcon,
@@ -35,6 +34,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import ResumeUpload from '../components/ResumeUpload'
+import { FormErrors } from '../types'
 
 const STEM_FIELDS = [
   'Software Engineering',
@@ -67,7 +67,7 @@ const CreateProfile = () => {
   })
 
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState<FormErrors>({})
   
   // Form fields
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '')
@@ -78,9 +78,9 @@ const CreateProfile = () => {
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
   const [portfolioUrl, setPortfolioUrl] = useState('')
-  const [skills, setSkills] = useState([])
+  const [skills, setSkills] = useState<string[]>([])
   const [currentSkill, setCurrentSkill] = useState('')
-  const [resumeFile, setResumeFile] = useState(null)
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
 
   const addSkill = () => {
     if (currentSkill.trim() && !skills.includes(currentSkill.trim())) {
@@ -89,12 +89,12 @@ const CreateProfile = () => {
     }
   }
 
-  const removeSkill = (skillToRemove) => {
+  const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter(skill => skill !== skillToRemove))
   }
 
-  const validateStep = (step) => {
-    const newErrors = {}
+  const validateStep = (step: number): boolean => {
+    const newErrors: FormErrors = {}
     
     if (step === 0) {
       if (!fullName.trim()) newErrors.fullName = 'Full name is required'
@@ -119,14 +119,14 @@ const CreateProfile = () => {
     setActiveStep(activeStep - 1)
   }
 
-  const uploadResume = async () => {
+  const uploadResume = async (): Promise<{ fileName: string; filePath: string } | null> => {
     if (!resumeFile) return null
 
     const fileExt = resumeFile.name.split('.').pop()
-    const fileName = `${user.id}_${Date.now()}.${fileExt}`
-    const filePath = `${user.id}/${fileName}`
+    const fileName = `${user!.id}_${Date.now()}.${fileExt}`
+    const filePath = `${user!.id}/${fileName}`
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('resumes')
       .upload(filePath, resumeFile, {
         cacheControl: '3600',
@@ -148,11 +148,14 @@ const CreateProfile = () => {
       let resumeData = {}
       
       if (resumeFile) {
-        const { fileName, filePath } = await uploadResume()
-        resumeData = {
-          resume_filename: fileName,
-          resume_filepath: filePath,
-          resume_uploaded_at: new Date().toISOString(),
+        const result = await uploadResume()
+        if (result) {
+          const { fileName, filePath } = result
+          resumeData = {
+            resume_filename: fileName,
+            resume_filepath: filePath,
+            resume_uploaded_at: new Date().toISOString(),
+          }
         }
       }
 
@@ -160,8 +163,8 @@ const CreateProfile = () => {
         .from('profiles')
         .insert([
           {
-            id: user.id,
-            email: user.email,
+            id: user!.id,
+            email: user!.email,
             full_name: fullName,
             phone: phone || null,
             location,
@@ -186,7 +189,7 @@ const CreateProfile = () => {
       })
 
       navigate('/dashboard')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating profile:', error)
       toast({
         title: 'Error creating profile',
@@ -206,7 +209,7 @@ const CreateProfile = () => {
         <Box textAlign="center">
           <Heading size="lg" mb={2}>Create Your Profile</Heading>
           <Text color="gray.600">
-            Let's set up your profile to connect with other women in STEM
+            Let's set up your profile to connect with other professionals
           </Text>
         </Box>
 
@@ -234,11 +237,11 @@ const CreateProfile = () => {
         <Box bg="white" p={8} borderRadius="xl" boxShadow="lg">
           {activeStep === 0 && (
             <VStack spacing={5}>
-              <FormControl isInvalid={errors.fullName}>
+              <FormControl isInvalid={!!errors.fullName}>
                 <FormLabel>Full Name *</FormLabel>
                 <Input
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
                   placeholder="Jane Doe"
                   size="lg"
                 />
@@ -249,17 +252,17 @@ const CreateProfile = () => {
                 <FormLabel>Phone Number</FormLabel>
                 <Input
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
                   placeholder="+1 (555) 123-4567"
                   size="lg"
                 />
               </FormControl>
 
-              <FormControl isInvalid={errors.location}>
+              <FormControl isInvalid={!!errors.location}>
                 <FormLabel>Location *</FormLabel>
                 <Input
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
                   placeholder="San Francisco, CA"
                   size="lg"
                 />
@@ -270,11 +273,11 @@ const CreateProfile = () => {
 
           {activeStep === 1 && (
             <VStack spacing={5}>
-              <FormControl isInvalid={errors.industry}>
+              <FormControl isInvalid={!!errors.industry}>
                 <FormLabel>Industry / Field *</FormLabel>
                 <Select
                   value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setIndustry(e.target.value)}
                   placeholder="Select your field"
                   size="lg"
                 >
@@ -287,11 +290,11 @@ const CreateProfile = () => {
                 <FormErrorMessage>{errors.industry}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={errors.bio}>
+              <FormControl isInvalid={!!errors.bio}>
                 <FormLabel>Bio *</FormLabel>
                 <Textarea
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBio(e.target.value)}
                   placeholder="Tell us about yourself, your experience, and what you're looking for in this community..."
                   rows={6}
                   size="lg"
@@ -307,8 +310,13 @@ const CreateProfile = () => {
                 <HStack>
                   <Input
                     value={currentSkill}
-                    onChange={(e) => setCurrentSkill(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSkill(e.target.value)}
+                    onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addSkill()
+                      }
+                    }}
                     placeholder="e.g., Python, Machine Learning, Leadership"
                     size="lg"
                   />
@@ -341,7 +349,7 @@ const CreateProfile = () => {
                   <FormLabel>LinkedIn URL</FormLabel>
                   <Input
                     value={linkedinUrl}
-                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setLinkedinUrl(e.target.value)}
                     placeholder="https://linkedin.com/in/..."
                   />
                 </FormControl>
@@ -350,7 +358,7 @@ const CreateProfile = () => {
                   <FormLabel>GitHub URL</FormLabel>
                   <Input
                     value={githubUrl}
-                    onChange={(e) => setGithubUrl(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setGithubUrl(e.target.value)}
                     placeholder="https://github.com/..."
                   />
                 </FormControl>
@@ -360,7 +368,7 @@ const CreateProfile = () => {
                 <FormLabel>Portfolio / Website</FormLabel>
                 <Input
                   value={portfolioUrl}
-                  onChange={(e) => setPortfolioUrl(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPortfolioUrl(e.target.value)}
                   placeholder="https://yourwebsite.com"
                 />
               </FormControl>

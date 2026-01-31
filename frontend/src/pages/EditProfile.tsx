@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ChangeEvent, KeyboardEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -26,6 +26,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import ResumeUpload from '../components/ResumeUpload'
+import { Profile, FormErrors } from '../types'
 
 const STEM_FIELDS = [
   'Software Engineering',
@@ -42,6 +43,11 @@ const STEM_FIELDS = [
   'Other',
 ]
 
+interface ExistingResume {
+  name: string
+  path: string
+}
+
 const EditProfile = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -49,7 +55,7 @@ const EditProfile = () => {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState<FormErrors>({})
   
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -59,10 +65,10 @@ const EditProfile = () => {
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
   const [portfolioUrl, setPortfolioUrl] = useState('')
-  const [skills, setSkills] = useState([])
+  const [skills, setSkills] = useState<string[]>([])
   const [currentSkill, setCurrentSkill] = useState('')
-  const [resumeFile, setResumeFile] = useState(null)
-  const [existingResume, setExistingResume] = useState(null)
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [existingResume, setExistingResume] = useState<ExistingResume | null>(null)
 
   useEffect(() => {
     fetchProfile()
@@ -73,28 +79,29 @@ const EditProfile = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', user!.id)
         .single()
 
       if (error) throw error
 
-      setFullName(data.full_name || '')
-      setPhone(data.phone || '')
-      setLocation(data.location || '')
-      setIndustry(data.industry || '')
-      setBio(data.bio || '')
-      setLinkedinUrl(data.linkedin_url || '')
-      setGithubUrl(data.github_url || '')
-      setPortfolioUrl(data.portfolio_url || '')
-      setSkills(data.skills || [])
+      const profile = data as Profile
+      setFullName(profile.full_name || '')
+      setPhone(profile.phone || '')
+      setLocation(profile.location || '')
+      setIndustry(profile.industry || '')
+      setBio(profile.bio || '')
+      setLinkedinUrl(profile.linkedin_url || '')
+      setGithubUrl(profile.github_url || '')
+      setPortfolioUrl(profile.portfolio_url || '')
+      setSkills(profile.skills || [])
       
-      if (data.resume_filepath) {
+      if (profile.resume_filepath) {
         setExistingResume({
-          name: data.resume_filename,
-          path: data.resume_filepath,
+          name: profile.resume_filename || '',
+          path: profile.resume_filepath,
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching profile:', error)
       toast({
         title: 'Error loading profile',
@@ -116,12 +123,12 @@ const EditProfile = () => {
     }
   }
 
-  const removeSkill = (skillToRemove) => {
+  const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter(skill => skill !== skillToRemove))
   }
 
-  const validateForm = () => {
-    const newErrors = {}
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
     
     if (!fullName.trim()) newErrors.fullName = 'Full name is required'
     if (!location.trim()) newErrors.location = 'Location is required'
@@ -133,7 +140,7 @@ const EditProfile = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  const uploadResume = async () => {
+  const uploadResume = async (): Promise<{ fileName: string; filePath: string } | null> => {
     if (!resumeFile) return null
 
     // Delete old resume if exists
@@ -142,10 +149,10 @@ const EditProfile = () => {
     }
 
     const fileExt = resumeFile.name.split('.').pop()
-    const fileName = `${user.id}_${Date.now()}.${fileExt}`
-    const filePath = `${user.id}/${fileName}`
+    const fileName = `${user!.id}_${Date.now()}.${fileExt}`
+    const filePath = `${user!.id}/${fileName}`
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('resumes')
       .upload(filePath, resumeFile, {
         cacheControl: '3600',
@@ -156,7 +163,7 @@ const EditProfile = () => {
     return { fileName, filePath }
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!validateForm()) {
@@ -169,11 +176,14 @@ const EditProfile = () => {
       let resumeData = {}
       
       if (resumeFile) {
-        const { fileName, filePath } = await uploadResume()
-        resumeData = {
-          resume_filename: fileName,
-          resume_filepath: filePath,
-          resume_uploaded_at: new Date().toISOString(),
+        const result = await uploadResume()
+        if (result) {
+          const { fileName, filePath } = result
+          resumeData = {
+            resume_filename: fileName,
+            resume_filepath: filePath,
+            resume_uploaded_at: new Date().toISOString(),
+          }
         }
       }
 
@@ -192,7 +202,7 @@ const EditProfile = () => {
           ...resumeData,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id)
+        .eq('id', user!.id)
 
       if (error) throw error
 
@@ -205,7 +215,7 @@ const EditProfile = () => {
       })
 
       navigate('/profile')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error)
       toast({
         title: 'Error updating profile',
@@ -240,11 +250,11 @@ const EditProfile = () => {
         <Box bg="white" p={8} borderRadius="xl" boxShadow="lg">
           <form onSubmit={handleSubmit}>
             <VStack spacing={5}>
-              <FormControl isInvalid={errors.fullName}>
+              <FormControl isInvalid={!!errors.fullName}>
                 <FormLabel>Full Name *</FormLabel>
                 <Input
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
                   placeholder="Jane Doe"
                   size="lg"
                 />
@@ -255,17 +265,17 @@ const EditProfile = () => {
                 <FormLabel>Phone Number</FormLabel>
                 <Input
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
                   placeholder="+1 (555) 123-4567"
                   size="lg"
                 />
               </FormControl>
 
-              <FormControl isInvalid={errors.location}>
+              <FormControl isInvalid={!!errors.location}>
                 <FormLabel>Location *</FormLabel>
                 <Input
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
                   placeholder="San Francisco, CA"
                   size="lg"
                 />
@@ -274,11 +284,11 @@ const EditProfile = () => {
 
               <Divider />
 
-              <FormControl isInvalid={errors.industry}>
+              <FormControl isInvalid={!!errors.industry}>
                 <FormLabel>Industry / Field *</FormLabel>
                 <Select
                   value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setIndustry(e.target.value)}
                   placeholder="Select your field"
                   size="lg"
                 >
@@ -291,11 +301,11 @@ const EditProfile = () => {
                 <FormErrorMessage>{errors.industry}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={errors.bio}>
+              <FormControl isInvalid={!!errors.bio}>
                 <FormLabel>Bio *</FormLabel>
                 <Textarea
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
                   rows={6}
                   size="lg"
@@ -311,8 +321,13 @@ const EditProfile = () => {
                 <HStack>
                   <Input
                     value={currentSkill}
-                    onChange={(e) => setCurrentSkill(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSkill(e.target.value)}
+                    onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addSkill()
+                      }
+                    }}
                     placeholder="e.g., Python, Machine Learning"
                     size="lg"
                   />
@@ -345,7 +360,7 @@ const EditProfile = () => {
                   <FormLabel>LinkedIn URL</FormLabel>
                   <Input
                     value={linkedinUrl}
-                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setLinkedinUrl(e.target.value)}
                     placeholder="https://linkedin.com/in/..."
                   />
                 </FormControl>
@@ -354,7 +369,7 @@ const EditProfile = () => {
                   <FormLabel>GitHub URL</FormLabel>
                   <Input
                     value={githubUrl}
-                    onChange={(e) => setGithubUrl(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setGithubUrl(e.target.value)}
                     placeholder="https://github.com/..."
                   />
                 </FormControl>
@@ -364,7 +379,7 @@ const EditProfile = () => {
                 <FormLabel>Portfolio / Website</FormLabel>
                 <Input
                   value={portfolioUrl}
-                  onChange={(e) => setPortfolioUrl(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPortfolioUrl(e.target.value)}
                   placeholder="https://yourwebsite.com"
                 />
               </FormControl>

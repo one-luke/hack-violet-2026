@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useDropzone } from 'react-dropzone'
+import { useDropzone, FileRejection } from 'react-dropzone'
 import {
   Box,
   Button,
@@ -8,16 +8,19 @@ import {
   HStack,
   Icon,
   useToast,
-  Progress,
 } from '@chakra-ui/react'
 import { AttachmentIcon, CheckCircleIcon, CloseIcon } from '@chakra-ui/icons'
 
-const ResumeUpload = ({ onFileSelect, currentFile }) => {
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [selectedFile, setSelectedFile] = useState(currentFile)
+interface ResumeUploadProps {
+  onFileSelect: (file: File | null) => void
+  currentFile?: File | null
+}
+
+const ResumeUpload = ({ onFileSelect, currentFile }: ResumeUploadProps) => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(currentFile || null)
   const toast = useToast()
 
-  const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     if (rejectedFiles.length > 0) {
       const error = rejectedFiles[0].errors[0]
       toast({
@@ -127,14 +130,7 @@ const ResumeUpload = ({ onFileSelect, currentFile }) => {
         </Box>
       )}
 
-      {uploadProgress > 0 && uploadProgress < 100 && (
-        <Box>
-          <Progress value={uploadProgress} colorScheme="purple" size="sm" borderRadius="full" />
-          <Text fontSize="xs" color="gray.500" mt={1}>
-            Uploading... {uploadProgress}%
-          </Text>
-        </Box>
-      )}
+
     </VStack>
   )
 }

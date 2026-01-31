@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, FormEvent, ChangeEvent } from 'react'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import {
   Box,
@@ -20,19 +20,24 @@ import {
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 
+interface FormErrors {
+  email?: string
+  password?: string
+}
+
 const SignIn = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState<FormErrors>({})
   
   const navigate = useNavigate()
   const toast = useToast()
   const { signIn } = useAuth()
 
-  const validateForm = () => {
-    const newErrors = {}
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
     
     if (!email.trim()) {
       newErrors.email = 'Email is required'
@@ -46,7 +51,7 @@ const SignIn = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     if (!validateForm()) {
@@ -56,7 +61,7 @@ const SignIn = () => {
     setLoading(true)
     
     try {
-      const { data, error } = await signIn(email, password)
+      const { error } = await signIn(email, password)
       
       if (error) {
         toast({
@@ -76,7 +81,7 @@ const SignIn = () => {
         })
         navigate('/dashboard')
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'An error occurred',
         description: error.message,
@@ -115,25 +120,25 @@ const SignIn = () => {
         >
           <form onSubmit={handleSubmit}>
             <VStack spacing={5}>
-              <FormControl isInvalid={errors.email}>
+              <FormControl isInvalid={!!errors.email}>
                 <FormLabel>Email</FormLabel>
                 <Input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   size="lg"
                 />
                 <FormErrorMessage>{errors.email}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={errors.password}>
+              <FormControl isInvalid={!!errors.password}>
                 <FormLabel>Password</FormLabel>
                 <InputGroup size="lg">
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                   />
                   <InputRightElement>

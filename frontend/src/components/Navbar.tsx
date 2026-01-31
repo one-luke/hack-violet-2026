@@ -41,7 +41,7 @@ const Navbar = () => {
               cursor="pointer"
               onClick={() => navigate('/dashboard')}
             >
-              Women in STEM Network
+              Aurelia
             </Text>
           </HStack>
 

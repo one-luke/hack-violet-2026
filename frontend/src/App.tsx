@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Box } from '@chakra-ui/react'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'

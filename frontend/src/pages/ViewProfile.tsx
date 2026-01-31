@@ -22,14 +22,14 @@ import {
 import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { Profile } from '../types'
 
 const ViewProfile = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
-  const [profile, setProfile] = useState(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [resumeUrl, setResumeUrl] = useState(null)
 
   useEffect(() => {
     fetchProfile()
@@ -40,21 +40,14 @@ const ViewProfile = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', user!.id)
         .single()
 
       if (error) throw error
 
-      setProfile(data)
-
-      if (data.resume_filepath) {
-        const { data: urlData } = supabase.storage
-          .from('resumes')
-          .getPublicUrl(data.resume_filepath)
-        
-        setResumeUrl(urlData.publicUrl)
-      }
-    } catch (error) {
+      const profileData = data as Profile
+      setProfile(profileData)
+    } catch (error: any) {
       console.error('Error fetching profile:', error)
       toast({
         title: 'Error loading profile',
@@ -70,7 +63,7 @@ const ViewProfile = () => {
   }
 
   const downloadResume = async () => {
-    if (!profile.resume_filepath) return
+    if (!profile?.resume_filepath) return
 
     try {
       const { data, error } = await supabase.storage
@@ -87,7 +80,7 @@ const ViewProfile = () => {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Error downloading resume',
         description: error.message,
@@ -248,9 +241,11 @@ const ViewProfile = () => {
                     >
                       Download Resume
                     </Button>
-                    <Text fontSize="sm" color="gray.500">
-                      Uploaded {new Date(profile.resume_uploaded_at).toLocaleDateString()}
-                    </Text>
+                    {profile.resume_uploaded_at && (
+                      <Text fontSize="sm" color="gray.500">
+                        Uploaded {new Date(profile.resume_uploaded_at).toLocaleDateString()}
+                      </Text>
+                    )}
                   </HStack>
                 </Box>
               </>

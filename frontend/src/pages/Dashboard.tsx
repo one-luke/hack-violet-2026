@@ -14,11 +14,30 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
+interface Profile {
+  id: string
+  full_name: string
+  email: string
+  location: string
+  industry: string
+  bio: string
+  skills: string[]
+  phone?: string
+  linkedin_url?: string
+  github_url?: string
+  portfolio_url?: string
+  resume_filename?: string
+  resume_filepath?: string
+  resume_uploaded_at?: string
+  created_at: string
+  updated_at: string
+}
+
 const Dashboard = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
-  const [profile, setProfile] = useState(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,7 +49,7 @@ const Dashboard = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', user!.id)
         .single()
 
       if (error && error.code !== 'PGRST116') {
@@ -38,7 +57,7 @@ const Dashboard = () => {
       }
 
       setProfile(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching profile:', error)
       toast({
         title: 'Error loading profile',
@@ -67,7 +86,7 @@ const Dashboard = () => {
           <VStack spacing={6}>
             <Box textAlign="center">
               <Heading size="lg" mb={3}>
-                Welcome to Women in STEM Network!
+                Welcome to Aurelia!
               </Heading>
               <Text color="gray.600" fontSize="lg">
                 Let's create your profile to get started
@@ -123,7 +142,7 @@ const Dashboard = () => {
             Coming Soon
           </Heading>
           <VStack align="start" spacing={2}>
-            <Text color="gray.700">• Connect with other women in STEM</Text>
+            <Text color="gray.700">• Connect with other professionals</Text>
             <Text color="gray.700">• Join and create events</Text>
             <Text color="gray.700">• Send messages to your network</Text>
             <Text color="gray.700">• Find mentorship opportunities</Text>

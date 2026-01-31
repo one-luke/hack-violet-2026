@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, FormEvent, ChangeEvent } from 'react'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import {
   Box,
@@ -20,20 +20,26 @@ import {
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 
+interface FormErrors {
+  fullName?: string
+  email?: string
+  password?: string
+}
+
 const SignUp = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState<FormErrors>({})
   
   const navigate = useNavigate()
   const toast = useToast()
   const { signUp } = useAuth()
 
-  const validateForm = () => {
-    const newErrors = {}
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
     
     if (!fullName.trim()) {
       newErrors.fullName = 'Full name is required'
@@ -55,7 +61,7 @@ const SignUp = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     if (!validateForm()) {
@@ -65,7 +71,7 @@ const SignUp = () => {
     setLoading(true)
     
     try {
-      const { data, error } = await signUp(email, password, fullName)
+      const { error } = await signUp(email, password, fullName)
       
       if (error) {
         toast({
@@ -85,7 +91,7 @@ const SignUp = () => {
         })
         navigate('/profile/create')
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'An error occurred',
         description: error.message,
@@ -107,7 +113,7 @@ const SignUp = () => {
             bgGradient="linear(to-r, purple.400, purple.600)"
             bgClip="text"
           >
-            Join Women in STEM Network
+            Join Aurelia
           </Heading>
           <Text color="gray.600" fontSize="lg">
             Connect with women in male-dominated fields
@@ -124,37 +130,37 @@ const SignUp = () => {
         >
           <form onSubmit={handleSubmit}>
             <VStack spacing={5}>
-              <FormControl isInvalid={errors.fullName}>
+              <FormControl isInvalid={!!errors.fullName}>
                 <FormLabel>Full Name</FormLabel>
                 <Input
                   type="text"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
                   placeholder="Jane Doe"
                   size="lg"
                 />
                 <FormErrorMessage>{errors.fullName}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={errors.email}>
+              <FormControl isInvalid={!!errors.email}>
                 <FormLabel>Email</FormLabel>
                 <Input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   size="lg"
                 />
                 <FormErrorMessage>{errors.email}</FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={errors.password}>
+              <FormControl isInvalid={!!errors.password}>
                 <FormLabel>Password</FormLabel>
                 <InputGroup size="lg">
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                   />
                   <InputRightElement>
