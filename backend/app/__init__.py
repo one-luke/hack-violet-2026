@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +12,14 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key')
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max file size
     
-    # CORS
-    CORS(app, origins=os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(','))
+    # CORS - Allow all origins for development
+    CORS(app, 
+         resources={r"/*": {
+             "origins": "*",
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "expose_headers": ["Content-Type"],
+         }})
     
     # Register blueprints
     from app.routes import profile, auth

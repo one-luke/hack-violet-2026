@@ -43,6 +43,22 @@ const Navbar = () => {
             >
               Aurelia
             </Text>
+            <HStack spacing={4}>
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/dashboard')}
+                _hover={{ bg: 'secondary.200' }}
+              >
+                Dashboard
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/search')}
+                _hover={{ bg: 'secondary.200' }}
+              >
+                Search
+              </Button>
+            </HStack>
           </HStack>
 
           <Flex alignItems="center">

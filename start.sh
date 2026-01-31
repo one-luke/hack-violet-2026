@@ -40,7 +40,7 @@ if [ ! -d "backend/venv" ]; then
 fi
 
 # Start backend
-echo "🔥 Starting Flask backend on http://localhost:5000..."
+echo "🔥 Starting Flask backend on http://localhost:5001..."
 cd backend
 source venv/bin/activate
 python run.py &
@@ -61,7 +61,7 @@ echo ""
 echo "✅ Platform is starting!"
 echo ""
 echo "Frontend: http://localhost:5173"
-echo "Backend:  http://localhost:5000"
+echo "Backend:  http://localhost:5001"
 echo ""
 echo "Press Ctrl+C to stop both servers"
 

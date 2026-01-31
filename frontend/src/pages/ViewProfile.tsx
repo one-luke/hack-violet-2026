@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   Container,
   VStack,
@@ -19,34 +19,59 @@ import {
   Icon,
   Tag,
 } from '@chakra-ui/react'
-import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
+import { ExternalLinkIcon, EditIcon, DownloadIcon, ArrowBackIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Profile } from '../types'
 
 const ViewProfile = () => {
   const { user } = useAuth()
+  const { userId } = useParams<{ userId?: string }>()
   const navigate = useNavigate()
   const toast = useToast()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Determine if viewing own profile or another user's profile
+  const isOwnProfile = !userId || userId === user?.id
+  const profileIdToFetch = userId || user?.id
 
   useEffect(() => {
     fetchProfile()
-  }, [user])
+  }, [userId, user])
 
   const fetchProfile = async () => {
+    if (!profileIdToFetch) return
+    
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user!.id)
-        .single()
+      if (isOwnProfile) {
+        // Fetch own profile
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', profileIdToFetch)
+          .single()
 
-      if (error) throw error
+        if (error) throw error
+        setProfile(data as Profile)
+      } else {
+        // Fetch another user's profile via backend API
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) throw new Error('Not authenticated')
 
-      const profileData = data as Profile
-      setProfile(profileData)
+        const response = await fetch(
+          `http://localhost:5001/api/profile/${profileIdToFetch}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        )
+
+        if (!response.ok) throw new Error('Failed to fetch profile')
+        const data = await response.json()
+        setProfile(data as Profile)
+      }
     } catch (error: any) {
       console.error('Error fetching profile:', error)
       toast({
@@ -56,7 +81,9 @@ const ViewProfile = () => {
         duration: 5000,
         isClosable: true,
       })
-      navigate('/dashboard')
+      if (isOwnProfile) {
+        navigate('/dashboard')
+      }
     } finally {
       setLoading(false)
     }
@@ -118,14 +145,29 @@ const ViewProfile = () => {
     <Container maxW="container.lg" py={8}>
       <VStack spacing={6} align="stretch">
         <HStack justify="space-between">
-          <Heading size="lg">My Profile</Heading>
-          <Button
-            leftIcon={<EditIcon />}
-            colorScheme="primary"
-            onClick={() => navigate('/profile/edit')}
-          >
-            Edit Profile
-          </Button>
+          <HStack>
+            {!isOwnProfile && (
+              <Button
+                leftIcon={<Icon viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </Icon>}
+                variant="ghost"
+                onClick={() => navigate(-1)}
+              >
+                Back
+              </Button>
+            )}
+            <Heading size="lg">{isOwnProfile ? 'My Profile' : `${profile.full_name}'s Profile`}</Heading>
+          </HStack>
+          {isOwnProfile && (
+            <Button
+              leftIcon={<EditIcon />}
+              colorScheme="primary"
+              onClick={() => navigate('/profile/edit')}
+            >
+              Edit Profile
+            </Button>
+          )}
         </HStack>
 
         <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
@@ -207,7 +249,7 @@ const ViewProfile = () => {
                   <Text fontWeight="semibold" color="text.500" fontSize="sm">Email</Text>
                   <Text>{profile.email}</Text>
                 </Box>
-                {profile.phone && (
+                {isOwnProfile && profile.phone && (
                   <Box>
                     <Text fontWeight="semibold" color="text.500" fontSize="sm">Phone</Text>
                     <Text>{profile.phone}</Text>
@@ -240,8 +282,8 @@ const ViewProfile = () => {
               </SimpleGrid>
             </Box>
 
-            {/* Resume Section */}
-            {profile.resume_filepath && (
+            {/* Resume Section - Only for own profile */}
+            {isOwnProfile && profile.resume_filepath && (
               <>
                 <Divider />
                 <Box>

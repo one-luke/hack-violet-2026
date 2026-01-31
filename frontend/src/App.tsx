@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import CreateProfile from './pages/CreateProfile'
 import EditProfile from './pages/EditProfile'
 import ViewProfile from './pages/ViewProfile'
+import Search from './pages/Search'
 
 function App() {
   return (
@@ -44,6 +45,22 @@ function App() {
             />
             <Route
               path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ViewProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <Search />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:userId"
               element={
                 <ProtectedRoute>
                   <ViewProfile />
