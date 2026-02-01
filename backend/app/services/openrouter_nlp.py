@@ -215,3 +215,102 @@ def parse_search_query(query: str) -> dict:
             return _extract_json(repair_content)
         except json.JSONDecodeError:
             return _fallback_parse(query)
+
+
+def _prepare_profile_summary(profile: dict) -> dict:
+    return {
+        "id": profile.get("id"),
+        "location": profile.get("location") or "",
+        "industry": profile.get("industry") or "",
+        "custom_industry": profile.get("custom_industry") or "",
+        "current_school": profile.get("current_school") or "",
+        "career_status": profile.get("career_status") or "",
+        "skills": profile.get("skills") or [],
+        "bio": (profile.get("bio") or "")[:200],
+    }
+
+
+def _score_profile(user_profile: dict, candidate: dict) -> int:
+    score = 0
+    if user_profile.get("location") and candidate.get("location"):
+        if user_profile["location"].lower() in candidate["location"].lower():
+            score += 3
+    user_industry = (user_profile.get("custom_industry") or user_profile.get("industry") or "").lower()
+    cand_industry = (candidate.get("custom_industry") or candidate.get("industry") or "").lower()
+    if user_industry and cand_industry and user_industry == cand_industry:
+        score += 4
+    if user_profile.get("current_school") and candidate.get("current_school"):
+        if user_profile["current_school"].lower() == candidate["current_school"].lower():
+            score += 4
+    if user_profile.get("career_status") and candidate.get("career_status"):
+        if user_profile["career_status"] == candidate["career_status"]:
+            score += 2
+    user_skills = set([s.lower() for s in (user_profile.get("skills") or [])])
+    cand_skills = set([s.lower() for s in (candidate.get("skills") or [])])
+    if user_skills and cand_skills:
+        score += len(user_skills.intersection(cand_skills)) * 2
+    return score
+
+
+def recommend_profile_ids(user_profile: dict, candidates: list[dict]) -> list[str]:
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    model = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-20b:free")
+    app_url = os.getenv("OPENROUTER_APP_URL", "")
+    app_name = os.getenv("OPENROUTER_APP_NAME", "Aurelia")
+
+    candidates = candidates[:50]
+    if not candidates:
+        return []
+
+    if not api_key:
+        return [c["id"] for c in sorted(candidates, key=lambda p: _score_profile(user_profile, p), reverse=True)]
+
+    user_summary = _prepare_profile_summary(user_profile)
+    candidate_summaries = [_prepare_profile_summary(c) for c in candidates]
+
+    prompt = (
+        "You are ranking professional profiles for a user. Return ONLY valid JSON.\n\n"
+        "Return format:\n"
+        '{"ranked_ids": ["id1","id2","id3"]}\n\n'
+        "Rank by best overall match considering location, school, industry, career_status, and skills.\n"
+        "If ties, prefer same industry and overlapping skills.\n\n"
+        f"User profile:\n{json.dumps(user_summary)}\n\n"
+        f"Candidate profiles:\n{json.dumps(candidate_summaries)}\n\n"
+        "JSON:"
+    )
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "Return only JSON. No extra text."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0,
+        "max_tokens": 300,
+    }
+    if os.getenv("OPENROUTER_JSON_MODE", "").strip() == "1":
+        payload["response_format"] = {"type": "json_object"}
+
+    try:
+        data = _post_openrouter(payload, api_key, app_url, app_name)
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+        if not isinstance(content, str):
+            content = json.dumps(content)
+        if not content.strip():
+            raise ValueError("Empty OpenRouter response")
+        parsed = _extract_json(content)
+        ranked_ids = parsed.get("ranked_ids", [])
+        if not isinstance(ranked_ids, list) or not ranked_ids:
+            raise ValueError("Invalid ranked_ids")
+        valid = {c["id"] for c in candidates}
+        filtered = [rid for rid in ranked_ids if rid in valid]
+        if filtered:
+            return filtered
+    except Exception:
+        pass
+
+    return [c["id"] for c in sorted(candidates, key=lambda p: _score_profile(user_profile, p), reverse=True)]

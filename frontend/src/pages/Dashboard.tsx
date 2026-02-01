@@ -13,6 +13,13 @@ import {
   HStack,
   Avatar,
   Divider,
+  SimpleGrid,
+  Card,
+  CardBody,
+  Wrap,
+  WrapItem,
+  Tag,
+  Badge,
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -59,12 +66,20 @@ const Dashboard = () => {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [insights, setInsights] = useState<Insight[]>([])
   const [insightsLoading, setInsightsLoading] = useState(false)
+  const [recommendations, setRecommendations] = useState<Profile[]>([])
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
 
   useEffect(() => {
     fetchProfile()
     fetchNotifications()
     fetchInsightsFeed()
   }, [user])
+
+  useEffect(() => {
+    if (profile) {
+      fetchRecommendations()
+    }
+  }, [profile])
 
   const fetchProfile = async () => {
     try {
@@ -133,6 +148,34 @@ const Dashboard = () => {
       console.error('Error fetching insights feed:', err)
     } finally {
       setInsightsLoading(false)
+    }
+  }
+
+  const fetchRecommendations = async () => {
+    setRecommendationsLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/profile/recommendations?limit=5`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setRecommendations(data)
+      } else {
+        console.error('Error fetching recommendations:', response.statusText)
+      }
+    } catch (err) {
+      console.error('Error fetching recommendations:', err)
+    } finally {
+      setRecommendationsLoading(false)
     }
   }
 
@@ -370,6 +413,95 @@ const Dashboard = () => {
               >
                 Find People to Follow
               </Button>
+            </Box>
+          )}
+        </Box>
+
+        {/* Profiles For You */}
+        <Box bg="surface.500" p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
+          <HStack justify="space-between" mb={4}>
+            <Box>
+              <Heading size="md">Profiles For You</Heading>
+              <Text color="text.500" fontSize="sm">Matched based on your profile</Text>
+            </Box>
+            <Button variant="outline" size="sm" onClick={() => navigate('/search?mode=recommendations')}>
+              See All
+            </Button>
+          </HStack>
+
+          {recommendationsLoading ? (
+            <Center py={8}>
+              <Spinner size="md" color="primary.500" />
+            </Center>
+          ) : recommendations.length > 0 ? (
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+              {recommendations.map((rec) => (
+                <Card
+                  key={rec.id}
+                  cursor="pointer"
+                  transition="all 0.2s"
+                  _hover={{ transform: 'translateY(-4px)', shadow: 'lg' }}
+                  onClick={() => navigate(`/profile/${rec.id}`)}
+                >
+                  <CardBody>
+                    <VStack align="stretch" spacing={3}>
+                      <HStack spacing={3} align="start">
+                        <Avatar
+                          name={rec.full_name}
+                          src={(rec as any).profile_picture_url}
+                          size="md"
+                        />
+                        <Box flex="1" minW="0">
+                          <Heading size="sm" noOfLines={1}>
+                            {rec.full_name}
+                          </Heading>
+                          <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                            {rec.email}
+                          </Text>
+                        </Box>
+                      </HStack>
+
+                      <VStack align="stretch" spacing={1}>
+                        <Text fontSize="sm">{(rec as any).custom_industry || rec.industry}</Text>
+                        {(rec as any).current_school && (
+                          <Text fontSize="sm" color="gray.600">{(rec as any).current_school}</Text>
+                        )}
+                        {(rec as any).career_status && (
+                          <Badge width="fit-content" colorScheme="green">
+                            {(rec as any).career_status.replace('_', ' ')}
+                          </Badge>
+                        )}
+                      </VStack>
+
+                      {rec.skills && rec.skills.length > 0 && (
+                        <>
+                          <Divider />
+                          <Wrap>
+                            {rec.skills.slice(0, 3).map((skill) => (
+                              <WrapItem key={skill}>
+                                <Tag size="sm" variant="outline">
+                                  {skill}
+                                </Tag>
+                              </WrapItem>
+                            ))}
+                            {rec.skills.length > 3 && (
+                              <WrapItem>
+                                <Tag size="sm" variant="outline">
+                                  +{rec.skills.length - 3}
+                                </Tag>
+                              </WrapItem>
+                            )}
+                          </Wrap>
+                        </>
+                      )}
+                    </VStack>
+                  </CardBody>
+                </Card>
+              ))}
+            </SimpleGrid>
+          ) : (
+            <Box textAlign="center" py={6}>
+              <Text color="text.500">No recommendations yet.</Text>
             </Box>
           )}
         </Box>
