@@ -55,4 +55,15 @@ def create_app():
     def health():
         return {'status': 'healthy'}, 200
     
+    @app.route('/')
+    def root():
+        from flask import request
+        return jsonify({
+            'message': 'API is running',
+            'path': request.path,
+            'full_path': request.full_path,
+            'url': request.url,
+            'routes': [str(rule) for rule in app.url_map.iter_rules()]
+        }), 200
+    
     return app
