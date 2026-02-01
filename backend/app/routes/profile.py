@@ -4,7 +4,7 @@ from app.middleware.auth import require_auth
 from app.supabase_client import supabase
 from app.services.openrouter_nlp import parse_search_query
 
-bp = Blueprint('profile', __name__, url_prefix='/api/profile')
+bp = Blueprint('profile', __name__)
 
 @bp.route('', methods=['GET'])
 @require_auth
