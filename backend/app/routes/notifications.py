@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.middleware.auth import require_auth
 from app.supabase_client import supabase
+import traceback
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -53,7 +54,9 @@ def get_notifications():
         }), 200
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in get_notifications: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'details': traceback.format_exc()}), 500
 
 @notifications_bp.route('/<notification_id>', methods=['DELETE'])
 @require_auth

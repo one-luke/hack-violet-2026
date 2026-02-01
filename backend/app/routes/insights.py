@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.supabase_client import supabase
 from app.middleware.auth import require_auth
 from app.services.embedding_service import generate_embedding
+import traceback
 
 insights_bp = Blueprint('insights', __name__)
 
@@ -11,6 +12,7 @@ def get_insights_feed():
     """Get insights from users that the current user follows"""
     try:
         user_id = request.user.user.id
+        print(f"Fetching insights feed for user: {user_id}")
         
         # Get list of users that current user follows
         follows_response = supabase.table('follows').select('following_id').eq(
@@ -18,9 +20,11 @@ def get_insights_feed():
         ).execute()
         
         if not follows_response.data:
+            print(f"User {user_id} is not following anyone")
             return jsonify([]), 200
         
         following_ids = [f['following_id'] for f in follows_response.data]
+        print(f"Following {len(following_ids)} users")
         
         # Get insights from followed users
         insights_response = supabase.table('insights').select(
@@ -28,6 +32,7 @@ def get_insights_feed():
         ).in_('user_id', following_ids).order('created_at', desc=True).limit(50).execute()
         
         insights = insights_response.data
+        print(f"Found {len(insights)} insights")
         
         # Get profile info and like counts for each insight
         for insight in insights:
@@ -52,7 +57,9 @@ def get_insights_feed():
         
         return jsonify(insights), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error fetching insights feed: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'details': traceback.format_exc()}), 500
 
 @insights_bp.route('/insights', methods=['POST'])
 @require_auth

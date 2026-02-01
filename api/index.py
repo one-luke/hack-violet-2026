@@ -11,19 +11,28 @@ backend_dir = os.path.join(parent_dir, 'backend')
 sys.path.insert(0, backend_dir)
 sys.path.insert(0, current_dir)
 
+print(f"Loading API from: {current_dir}")
+print(f"Backend dir: {backend_dir}")
+print(f"Backend exists: {os.path.exists(backend_dir)}")
+
 # Try to import and create the real app
 app = None
 import_error = None
 
 try:
+    print("Attempting to import create_app...")
     from app import create_app
+    print("Successfully imported create_app")
     app = create_app()
+    print("Successfully created app")
 except Exception as e:
+    print(f"Failed to create app: {str(e)}")
     import_error = {
         'error': str(e),
         'type': type(e).__name__,
         'traceback': traceback.format_exc()
     }
+    traceback.print_exc()
 
 # If import failed, create a debug app
 if app is None:

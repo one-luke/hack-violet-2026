@@ -1,4 +1,6 @@
 import traceback
+import os
+import random
 from flask import Blueprint, request, jsonify
 from app.middleware.auth import require_auth
 from app.supabase_client import supabase
@@ -335,6 +337,16 @@ def get_recommendations():
             return jsonify([]), 200
 
         # Use LLM to get recommendations with reasons
+        # If OpenRouter API key is missing, return simple random recommendations
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+        if not api_key:
+            print("Warning: OPENROUTER_API_KEY not set, returning random recommendations")
+            import random
+            result = random.sample(candidates, min(limit, len(candidates)))
+            for profile in result:
+                profile['recommendation_reason'] = "Recommended based on your profile"
+            return jsonify(result), 200
+        
         from app.services.openrouter_nlp import recommend_profiles_with_reasons
         recommendations_with_reasons = recommend_profiles_with_reasons(
             user_resp.data, 
@@ -356,7 +368,7 @@ def get_recommendations():
     except Exception as e:
         print(f"Recommendation error: {str(e)}")
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'details': traceback.format_exc()}), 500
 
 @bp.route('/<user_id>', methods=['GET'])
 @require_auth

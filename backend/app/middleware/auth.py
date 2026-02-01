@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import request, jsonify
 import jwt
+import traceback
 from app.supabase_client import supabase
 
 def require_auth(f):
@@ -9,6 +10,7 @@ def require_auth(f):
         auth_header = request.headers.get('Authorization')
         
         if not auth_header:
+            print("Authentication failed: No authorization header")
             return jsonify({'error': 'No authorization header'}), 401
         
         try:
@@ -19,6 +21,7 @@ def require_auth(f):
             user = supabase.auth.get_user(token)
             
             if not user:
+                print("Authentication failed: Invalid token")
                 return jsonify({'error': 'Invalid token'}), 401
             
             # Add user to request context
@@ -27,6 +30,8 @@ def require_auth(f):
             return f(*args, **kwargs)
             
         except Exception as e:
+            print(f"Authentication error: {str(e)}")
+            traceback.print_exc()
             return jsonify({'error': f'Authentication failed: {str(e)}'}), 401
     
     return decorated_function
