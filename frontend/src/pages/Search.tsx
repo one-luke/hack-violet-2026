@@ -74,6 +74,7 @@ export default function Search() {
   const [error, setError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
   const [loadingStage, setLoadingStage] = useState<'parsing' | 'searching' | null>(null)
+  const [lastParsedQuery, setLastParsedQuery] = useState('')
 
   const parseNaturalLanguage = async (query: string, token: string) => {
     const response = await fetch(
@@ -135,11 +136,17 @@ export default function Search() {
       let effectiveCareerStatus = selectedCareerStatus
       let effectiveSkills = selectedSkills
 
-      // Handle NLP parsing first (show loading immediately)
-      if (effectiveQuery) {
-        // Show loading and parsing stage immediately
+      // Only trigger NLP parsing if the query text has changed
+      console.log('Current query:', effectiveQuery, 'Last parsed query:', lastParsedQuery)
+      const queryChanged = effectiveQuery && effectiveQuery !== lastParsedQuery
+      
+      // Always show loading
+      setLoading(true)
+      
+      // Handle NLP parsing first if query changed
+      if (queryChanged) {
+        // Show parsing stage
         setLoadingStage('parsing')
-        setLoading(true)
         
         // Reset all filters before applying parsed ones
         effectiveIndustry = ''
@@ -157,6 +164,10 @@ export default function Search() {
         try {
           const parsed = await parseNaturalLanguage(effectiveQuery, session.access_token)
           
+          // Mark the original query as parsed (not the text_query result)
+          setLastParsedQuery(effectiveQuery)
+          
+          // Use parsed values for the search, but keep original query visible
           effectiveQuery = parsed.text_query || ''
           effectiveIndustry = parsed.industry || ''
           effectiveLocation = parsed.location || ''
@@ -164,18 +175,18 @@ export default function Search() {
           effectiveCareerStatus = parsed.career_status || ''
           effectiveSkills = parsed.skills || []
 
+          // Update filter states (but not searchQuery, keep it as-is for display)
           setSelectedIndustry(effectiveIndustry)
           setSelectedLocation(effectiveLocation)
           setSelectedSchool(effectiveSchool)
           setSelectedCareerStatus(effectiveCareerStatus)
           setSelectedSkills(effectiveSkills)
+          
         } catch (parseErr) {
           // Continue with original query if parsing fails
           console.warn('Unable to parse search text:', parseErr)
+          setLastParsedQuery(effectiveQuery)
         }
-      } else {
-        // For explicit filter searches, show loading immediately too
-        setLoading(true)
       }
       
       // Now show the searching UI with skeleton loaders
@@ -236,6 +247,7 @@ export default function Search() {
     setSelectedSkills([])
     setSkillInput('')
     setHasSearched(false)
+    setLastParsedQuery('') // Reset the last parsed query when clearing
     setTimeout(() => handleSearch(), 100)
   }
 
