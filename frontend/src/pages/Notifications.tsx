@@ -230,8 +230,8 @@ export const NotificationInbox: React.FC = () => {
   if (loading) {
     return (
       <Container maxW="container.lg" py={8}>
-        <Center>
-          <Spinner size="xl" />
+        <Center h="60vh">
+          <Spinner size="xl" color="primary.500" thickness="4px" />
         </Center>
       </Container>
     );
@@ -241,13 +241,20 @@ export const NotificationInbox: React.FC = () => {
     <Container maxW="container.lg" py={8}>
       <VStack spacing={6} align="stretch">
         <HStack justify="space-between">
-          <Heading size="lg">Notifications</Heading>
+          <Heading
+            size="lg"
+            bgGradient="linear(to-r, primary.500, accent.400)"
+            bgClip="text"
+          >
+            Notifications
+          </Heading>
           <Button
             size="sm"
             onClick={clearAll}
             colorScheme="red"
-            variant="outline"
+            variant="ghost"
             isDisabled={notifications.length === 0}
+            borderRadius="full"
           >
             Clear All
           </Button>
@@ -257,42 +264,46 @@ export const NotificationInbox: React.FC = () => {
           <Box
             bg="white"
             p={12}
-            borderRadius="lg"
+            borderRadius="2xl"
             textAlign="center"
             borderWidth={1}
+            borderColor="gray.100"
+            boxShadow="sm"
           >
             <Text fontSize="4xl" mb={4}>
               🔔
             </Text>
-            <Heading size="md" mb={2}>
+            <Heading size="md" mb={2} color="text.800">
               No notifications yet
             </Heading>
-            <Text color="gray.600">
+            <Text color="gray.500">
               You'll see notifications here when people follow you or interact with your profile
             </Text>
           </Box>
         ) : (
-          <VStack spacing={0} bg="white" borderRadius="lg" borderWidth={1} overflow="hidden">
+          <VStack spacing={0} bg="white" borderRadius="2xl" borderWidth={1} borderColor="gray.100" overflow="hidden" boxShadow="sm">
             {notifications.map((notification, index) => (
               <React.Fragment key={notification.id}>
-                {index > 0 && <Divider />}
+                {index > 0 && <Divider borderColor="gray.100" />}
                 <HStack
                   w="full"
                   p={4}
                   spacing={4}
-                  bg={notification.read ? 'white' : 'blue.50'}
+                  bg={notification.read ? 'white' : 'primary.50'}
                   cursor="pointer"
-                  _hover={{ bg: notification.read ? 'gray.50' : 'blue.100' }}
+                  _hover={{ bg: notification.read ? 'gray.50' : 'primary.100' }}
                   onClick={() => handleNotificationClick(notification)}
-                  transition="background 0.2s"
+                  transition="all 0.2s"
                 >
                   <Avatar
                     size="md"
                     src={notification.related_user?.profile_picture_url || undefined}
                     name={notification.related_user?.name}
+                    border="2px solid"
+                    borderColor="accent.400"
                   />
                   <VStack align="start" flex={1} spacing={1}>
-                    <Text fontWeight={notification.read ? 'normal' : 'bold'}>
+                    <Text fontWeight={notification.read ? 'normal' : 'semibold'} color="text.800">
                       {notification.message}
                     </Text>
                     <Text fontSize="sm" color="gray.500">
@@ -305,6 +316,7 @@ export const NotificationInbox: React.FC = () => {
                     size="sm"
                     variant="ghost"
                     colorScheme="red"
+                    borderRadius="full"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteNotification(notification.id);

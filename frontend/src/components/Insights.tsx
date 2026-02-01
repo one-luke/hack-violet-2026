@@ -43,14 +43,22 @@ export const InsightCard: React.FC<InsightCardProps> = ({
   }
 
   return (
-    <Card mb={3}>
-      <CardBody>
+    <Card
+      mb={3}
+      bg="white"
+      borderRadius="xl"
+      borderWidth="1px"
+      borderColor="gray.100"
+      transition="all 0.2s"
+      _hover={{ boxShadow: 'md', borderColor: 'gray.200' }}
+    >
+      <CardBody p={5}>
         <HStack justify="space-between" align="flex-start">
           <Box flex={1}>
-            <Heading size="md" mb={2}>
+            <Heading size="md" mb={2} fontWeight="semibold" color="text.800">
               {insight.title}
             </Heading>
-            <Text mb={3} whiteSpace="pre-wrap">
+            <Text mb={3} whiteSpace="pre-wrap" color="text.700" lineHeight="tall">
               {insight.content}
             </Text>
             
@@ -62,18 +70,20 @@ export const InsightCard: React.FC<InsightCardProps> = ({
                 display="flex"
                 alignItems="center"
                 mb={3}
+                fontWeight="medium"
+                _hover={{ color: 'primary.700', textDecoration: 'underline' }}
               >
                 <Icon as={ExternalLinkIcon} mr={1} />
                 {insight.link_title || insight.link_url}
               </Link>
             )}
             
-            <HStack spacing={4} mt={3}>
+            <HStack spacing={4} mt={4}>
               <HStack spacing={1}>
                 <IconButton
                   aria-label="Like insight"
                   icon={
-                    <Icon viewBox="0 0 24 24">
+                    <Icon viewBox="0 0 24 24" boxSize={5}>
                       {insight.liked_by_user ? (
                         <path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                       ) : (
@@ -84,9 +94,11 @@ export const InsightCard: React.FC<InsightCardProps> = ({
                   onClick={handleLikeClick}
                   size="sm"
                   variant="ghost"
+                  borderRadius="full"
                   colorScheme={insight.liked_by_user ? "red" : "gray"}
+                  _hover={{ bg: insight.liked_by_user ? 'red.50' : 'gray.100' }}
                 />
-                <Text fontSize="sm">
+                <Text fontSize="sm" fontWeight="medium" color="text.600">
                   {insight.likes_count} {insight.likes_count === 1 ? 'like' : 'likes'}
                 </Text>
               </HStack>
@@ -109,6 +121,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({
               size="sm"
               colorScheme="red"
               variant="ghost"
+              borderRadius="full"
             />
           )}
         </HStack>
@@ -169,60 +182,68 @@ export const CreateInsightForm: React.FC<CreateInsightFormProps> = ({ onSubmit, 
   }
 
   return (
-    <Card mb={4} bg="surface.400">
-      <CardBody>
-        <Heading size="md" mb={4}>
+    <Card mb={4} bg="white" borderRadius="xl" borderWidth="1px" borderColor="gray.100" boxShadow="sm">
+      <CardBody p={6}>
+        <Heading size="md" mb={5} fontWeight="semibold" color="text.800">
           Share a Career Insight
         </Heading>
         
         <form onSubmit={handleSubmit}>
           <VStack spacing={4} align="stretch">
             <FormControl isRequired>
-              <FormLabel>Title</FormLabel>
+              <FormLabel fontWeight="medium" color="text.700">Title</FormLabel>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., 'The Book That Changed My Career'"
+                borderRadius="lg"
+                _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
               />
             </FormControl>
             
             <FormControl isRequired>
-              <FormLabel>Your Insight</FormLabel>
+              <FormLabel fontWeight="medium" color="text.700">Your Insight</FormLabel>
               <Textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Share what helped you most in your career journey..."
                 rows={4}
+                borderRadius="lg"
+                _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
               />
             </FormControl>
             
-            <Text fontSize="sm" fontWeight="semibold" color="text.500">
+            <Text fontSize="sm" fontWeight="semibold" color="text.600">
               Optional: Add a link
             </Text>
             
             <FormControl>
-              <FormLabel>Link URL</FormLabel>
+              <FormLabel fontWeight="medium" color="text.700">Link URL</FormLabel>
               <Input
                 type="url"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
                 placeholder="https://..."
+                borderRadius="lg"
+                _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
               />
             </FormControl>
             
             {linkUrl && (
               <FormControl>
-                <FormLabel>Link Title (optional)</FormLabel>
+                <FormLabel fontWeight="medium" color="text.700">Link Title (optional)</FormLabel>
                 <Input
                   value={linkTitle}
                   onChange={(e) => setLinkTitle(e.target.value)}
                   placeholder="Display text for the link"
+                  borderRadius="lg"
+                  _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                 />
               </FormControl>
             )}
             
             {error && (
-              <Text color="red.500">
+              <Text color="red.500" fontSize="sm">
                 {error}
               </Text>
             )}
@@ -232,13 +253,16 @@ export const CreateInsightForm: React.FC<CreateInsightFormProps> = ({ onSubmit, 
                 type="submit" 
                 colorScheme="primary"
                 isLoading={isSubmitting}
+                borderRadius="full"
+                px={6}
               >
                 Post Insight
               </Button>
               <Button 
                 onClick={onCancel} 
-                variant="outline"
+                variant="ghost"
                 isDisabled={isSubmitting}
+                borderRadius="full"
               >
                 Cancel
               </Button>

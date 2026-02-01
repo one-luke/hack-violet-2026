@@ -13,7 +13,6 @@ import {
   MenuItem,
   MenuDivider,
   Avatar,
-  useColorModeValue,
   Text,
   Container,
 } from '@chakra-ui/react'
@@ -21,14 +20,32 @@ import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from './logo.png'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 const Navbar = () => {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
-  const bg = useColorModeValue('surface.500', 'gray.800')
-  const borderColor = useColorModeValue('border.300', 'gray.700')
   const [searchInput, setSearchInput] = useState('')
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      if (!user?.id) return
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('profile_picture_url')
+        .eq('id', user.id)
+        .single()
+      
+      if (data?.profile_picture_url) {
+        setProfilePictureUrl(data.profile_picture_url)
+      }
+    }
+
+    fetchProfilePicture()
+  }, [user?.id])
 
   const handleSignOut = async () => {
     await signOut()
@@ -36,7 +53,7 @@ const Navbar = () => {
   }
 
   return (
-    <Box bg={bg} px={4} borderBottom="1px" borderColor={borderColor}>
+    <Box bg="white" px={4} boxShadow="sm" position="sticky" top={0} zIndex={100}>
       <Container maxW="container.xl">
         <Flex h={16} alignItems="center" justifyContent="space-between">
           <HStack spacing={8} alignItems="center">
@@ -79,6 +96,11 @@ const Navbar = () => {
                     navigate(`/search?q=${encodeURIComponent(searchInput.trim())}`)
                   }
                 }}
+                borderRadius="full"
+                bg="gray.50"
+                borderColor="gray.200"
+                _hover={{ bg: 'gray.100', borderColor: 'gray.300' }}
+                _focus={{ bg: 'white', borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
               />
             </InputGroup>
           </HStack>
@@ -96,16 +118,17 @@ const Navbar = () => {
                   <Avatar
                     size="sm"
                     name={user?.user_metadata?.full_name || user?.email}
+                    src={profilePictureUrl || undefined}
                     bg="primary.500"
                   />
                   <ChevronDownIcon />
                 </HStack>
               </MenuButton>
-              <MenuList bg="surface.500" borderColor="border.300">
-                <MenuItem onClick={() => navigate('/profile')} _hover={{ bg: 'secondary.200' }}>My Profile</MenuItem>
-                <MenuItem onClick={() => navigate('/profile/edit')} _hover={{ bg: 'secondary.200' }}>Edit Profile</MenuItem>
-                <MenuDivider borderColor="border.300" />
-                <MenuItem onClick={handleSignOut} _hover={{ bg: 'secondary.200' }}>Sign Out</MenuItem>
+              <MenuList bg="white" borderColor="gray.200" boxShadow="lg" borderRadius="xl">
+                <MenuItem onClick={() => navigate('/profile')} _hover={{ bg: 'gray.50' }} borderRadius="md">My Profile</MenuItem>
+                <MenuItem onClick={() => navigate('/profile/edit')} _hover={{ bg: 'gray.50' }} borderRadius="md">Edit Profile</MenuItem>
+                <MenuDivider borderColor="gray.200" />
+                <MenuItem onClick={handleSignOut} _hover={{ bg: 'red.50', color: 'red.600' }} borderRadius="md">Sign Out</MenuItem>
               </MenuList>
             </Menu>
           </Flex>

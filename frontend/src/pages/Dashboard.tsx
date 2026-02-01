@@ -158,7 +158,7 @@ const Dashboard = () => {
       if (!session) return
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/profile/recommendations?limit=5`,
+        `${import.meta.env.VITE_API_URL}/api/profile/recommendations?limit=3`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -296,21 +296,39 @@ const Dashboard = () => {
       <Container maxW="container.md" py={16}>
         <Center>
           <VStack spacing={6}>
-            <Box textAlign="center">
-              <Heading size="lg" mb={3}>
+            <Box
+              textAlign="center"
+              p={8}
+              borderRadius="2xl"
+              bg="white"
+              boxShadow="lg"
+              borderWidth="1px"
+              borderColor="gray.100"
+            >
+              <Heading
+                size="xl"
+                mb={3}
+                bgGradient="linear(to-r, primary.500, accent.400)"
+                bgClip="text"
+              >
                 Welcome to Aurelia!
               </Heading>
-              <Text color="text.500" fontSize="lg">
+              <Text color="text.500" fontSize="lg" mb={6}>
                 Let's create your profile to get started
               </Text>
+              <Button
+                colorScheme="primary"
+                size="lg"
+                borderRadius="full"
+                px={8}
+                boxShadow="md"
+                _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+                transition="all 0.2s"
+                onClick={() => navigate('/profile/create')}
+              >
+                Create Profile
+              </Button>
             </Box>
-            <Button
-              colorScheme="primary"
-              size="lg"
-              onClick={() => navigate('/profile/create')}
-            >
-              Create Profile
-            </Button>
           </VStack>
         </Center>
       </Container>
@@ -319,62 +337,83 @@ const Dashboard = () => {
 
   return (
     <Container maxW="container.xl" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Heading size="lg" mb={2}>
-            Welcome back, {profile.full_name}!
-          </Heading>
-          <Text color="text.500" fontSize="lg">
-            Your dashboard
-          </Text>
-        </Box>
-
-        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-          <VStack spacing={4} align="stretch">
-            <Button
-              colorScheme="primary"
-              size="lg"
-              onClick={() => navigate('/profile')}
-            >
-              View My Profile
-            </Button>
-            <Button
-              variant="outline"
-              colorScheme="primary"
-              size="lg"
-              onClick={() => navigate('/profile/edit')}
-            >
-              Edit Profile
-            </Button>
-          </VStack>
+      <VStack spacing={6} align="stretch">
+        {/* Welcome Section with Gradient */}
+        <Box
+          bgGradient="linear(to-r, primary.500, accent.400)"
+          p={8}
+          borderRadius="2xl"
+          boxShadow="xl"
+          position="relative"
+          overflow="hidden"
+        >
+          <Box position="relative" zIndex={1}>
+            <Heading size="xl" color="white" mb={2} fontWeight="bold">
+              Welcome back, {profile.full_name}!
+            </Heading>
+            <Text color="whiteAlpha.900" fontSize="lg" fontWeight="medium">
+              Your personalized dashboard
+            </Text>
+          </Box>
+          {/* Decorative element */}
+          <Box
+            position="absolute"
+            right="-20px"
+            top="-20px"
+            width="200px"
+            height="200px"
+            borderRadius="full"
+            bg="whiteAlpha.200"
+            filter="blur(40px)"
+          />
         </Box>
 
         {/* Notifications Feed */}
         {notifications.length > 0 && (
-          <Box bg="surface.500" p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-            <Heading size="md" mb={4}>
-              Recent Activity
-            </Heading>
+          <Box
+            bg="white"
+            p={6}
+            borderRadius="2xl"
+            boxShadow="sm"
+            borderWidth="1px"
+            borderColor="gray.100"
+            transition="all 0.3s"
+            _hover={{ boxShadow: 'md' }}
+          >
+            <HStack justify="space-between" mb={4}>
+              <HStack spacing={2}>
+                <Box w={1} h={6} bg="accent.500" borderRadius="full" />
+                <Heading size="md" fontWeight="semibold" color="text.800">
+                  Recent Activity
+                </Heading>
+              </HStack>
+              <Badge colorScheme="purple" fontSize="xs" px={3} py={1} borderRadius="full">
+                {notifications.length} new
+              </Badge>
+            </HStack>
             <VStack spacing={0} align="stretch">
               {notifications.map((notification, index) => (
                 <Box key={notification.id}>
-                  {index > 0 && <Divider my={3} />}
+                  {index > 0 && <Divider my={2} borderColor="gray.100" />}
                   <HStack
                     spacing={3}
                     cursor="pointer"
-                    p={2}
-                    borderRadius="md"
-                    _hover={{ bg: 'secondary.200' }}
+                    p={3}
+                    borderRadius="xl"
+                    transition="all 0.2s"
+                    _hover={{ bg: 'gray.50', transform: 'translateX(4px)' }}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <Avatar
                       size="sm"
                       src={notification.related_user?.profile_picture_url || undefined}
                       name={notification.related_user?.name}
+                      border="2px solid"
+                      borderColor="accent.400"
                     />
                     <VStack align="start" flex={1} spacing={0}>
-                      <Text fontSize="sm">{notification.message}</Text>
-                      <Text fontSize="xs" color="gray.500">
+                      <Text fontSize="sm" fontWeight="medium" color="text.800">{notification.message}</Text>
+                      <Text fontSize="xs" color="text.500">
                         {getTimeAgo(notification.created_at)}
                       </Text>
                     </VStack>
@@ -386,13 +425,27 @@ const Dashboard = () => {
         )}
 
         {/* Insights Feed from Following */}
-        <Box bg="surface.500" p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-          <Heading size="md" mb={4}>
-            Career Insights from Your Network
-          </Heading>
+        <Box
+          bg="white"
+          p={6}
+          borderRadius="2xl"
+          boxShadow="sm"
+          borderWidth="1px"
+          borderColor="gray.100"
+          transition="all 0.3s"
+          _hover={{ boxShadow: 'md' }}
+        >
+          <HStack justify="space-between" mb={4}>
+            <HStack spacing={2}>
+              <Box w={1} h={6} bgGradient="linear(to-b, primary.500, accent.500)" borderRadius="full" />
+              <Heading size="md" fontWeight="semibold" color="text.800">
+                Career Insights from Your Network
+              </Heading>
+            </HStack>
+          </HStack>
           {insightsLoading ? (
             <Center py={8}>
-              <Spinner size="md" color="primary.500" />
+              <Spinner size="md" color="primary.500" thickness="3px" />
             </Center>
           ) : insights.length > 0 ? (
             <InsightsList
@@ -403,12 +456,13 @@ const Dashboard = () => {
             />
           ) : (
             <Box textAlign="center" py={8}>
-              <Text color="text.500">
+              <Text color="text.500" mb={4}>
                 Follow people to see their career insights here
               </Text>
               <Button
-                mt={4}
                 colorScheme="primary"
+                size="md"
+                borderRadius="full"
                 onClick={() => navigate('/search')}
               >
                 Find People to Follow
@@ -418,20 +472,38 @@ const Dashboard = () => {
         </Box>
 
         {/* Profiles For You */}
-        <Box bg="surface.500" p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-          <HStack justify="space-between" mb={4}>
+        <Box
+          bg="white"
+          p={6}
+          borderRadius="2xl"
+          boxShadow="sm"
+          borderWidth="1px"
+          borderColor="gray.100"
+          transition="all 0.3s"
+          _hover={{ boxShadow: 'md' }}
+        >
+          <HStack justify="space-between" mb={5}>
             <Box>
-              <Heading size="md">Profiles For You</Heading>
-              <Text color="text.500" fontSize="sm">Matched based on your profile</Text>
+              <HStack spacing={2} mb={1}>
+                <Box w={1} h={6} bg="highlight.500" borderRadius="full" />
+                <Heading size="md" fontWeight="semibold" color="text.800">Profiles For You</Heading>
+              </HStack>
+              <Text color="text.500" fontSize="sm" ml={3}>Matched based on your profile</Text>
             </Box>
-            <Button variant="outline" size="sm" onClick={() => navigate('/search?mode=recommendations')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              colorScheme="primary"
+              borderRadius="full"
+              onClick={() => navigate('/search?mode=recommendations')}
+            >
               See All
             </Button>
           </HStack>
 
           {recommendationsLoading ? (
             <Center py={8}>
-              <Spinner size="md" color="primary.500" />
+              <Spinner size="md" color="primary.500" thickness="3px" />
             </Center>
           ) : recommendations.length > 0 ? (
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
@@ -439,35 +511,54 @@ const Dashboard = () => {
                 <Card
                   key={rec.id}
                   cursor="pointer"
-                  transition="all 0.2s"
-                  _hover={{ transform: 'translateY(-4px)', shadow: 'lg' }}
+                  transition="all 0.3s"
+                  bg="gray.50"
+                  borderWidth="1px"
+                  borderColor="gray.100"
+                  borderRadius="xl"
+                  overflow="hidden"
+                  _hover={{
+                    transform: 'translateY(-6px)',
+                    shadow: 'lg',
+                    borderColor: 'primary.300',
+                    bg: 'white'
+                  }}
                   onClick={() => navigate(`/profile/${rec.id}`)}
                 >
-                  <CardBody>
+                  <CardBody p={5}>
                     <VStack align="stretch" spacing={3}>
                       <HStack spacing={3} align="start">
                         <Avatar
                           name={rec.full_name}
                           src={(rec as any).profile_picture_url}
                           size="md"
+                          border="2px solid"
+                          borderColor="accent.400"
                         />
                         <Box flex="1" minW="0">
-                          <Heading size="sm" noOfLines={1}>
+                          <Heading size="sm" noOfLines={1} fontWeight="semibold">
                             {rec.full_name}
                           </Heading>
-                          <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
                             {rec.email}
                           </Text>
                         </Box>
                       </HStack>
 
                       <VStack align="stretch" spacing={1}>
-                        <Text fontSize="sm">{(rec as any).custom_industry || rec.industry}</Text>
+                        <Text fontSize="sm" fontWeight="medium" color="text.700">{(rec as any).custom_industry || rec.industry}</Text>
                         {(rec as any).current_school && (
-                          <Text fontSize="sm" color="gray.600">{(rec as any).current_school}</Text>
+                          <Text fontSize="xs" color="gray.600">{(rec as any).current_school}</Text>
                         )}
                         {(rec as any).career_status && (
-                          <Badge width="fit-content" colorScheme="green">
+                          <Badge
+                            width="fit-content"
+                            colorScheme="cyan"
+                            fontSize="xs"
+                            px={2}
+                            py={1}
+                            borderRadius="full"
+                          >
                             {(rec as any).career_status.replace('_', ' ')}
                           </Badge>
                         )}
@@ -475,18 +566,30 @@ const Dashboard = () => {
 
                       {rec.skills && rec.skills.length > 0 && (
                         <>
-                          <Divider />
-                          <Wrap>
+                          <Divider borderColor="gray.200" />
+                          <Wrap spacing={2}>
                             {rec.skills.slice(0, 3).map((skill) => (
                               <WrapItem key={skill}>
-                                <Tag size="sm" variant="outline">
+                                <Tag
+                                  size="sm"
+                                  variant="subtle"
+                                  colorScheme="purple"
+                                  borderRadius="full"
+                                  fontSize="xs"
+                                >
                                   {skill}
                                 </Tag>
                               </WrapItem>
                             ))}
                             {rec.skills.length > 3 && (
                               <WrapItem>
-                                <Tag size="sm" variant="outline">
+                                <Tag
+                                  size="sm"
+                                  variant="subtle"
+                                  colorScheme="gray"
+                                  borderRadius="full"
+                                  fontSize="xs"
+                                >
                                   +{rec.skills.length - 3}
                                 </Tag>
                               </WrapItem>
@@ -504,18 +607,6 @@ const Dashboard = () => {
               <Text color="text.500">No recommendations yet.</Text>
             </Box>
           )}
-        </Box>
-
-        <Box bg="secondary.200" p={6} borderRadius="lg" borderWidth="1px" borderColor="border.300">
-          <Heading size="md" mb={3}>
-            Coming Soon
-          </Heading>
-          <VStack align="start" spacing={2}>
-            <Text color="text.700">• Connect with other professionals</Text>
-            <Text color="text.700">• Join and create events</Text>
-            <Text color="text.700">• Send messages to your network</Text>
-            <Text color="text.700">• Find mentorship opportunities</Text>
-          </VStack>
         </Box>
       </VStack>
     </Container>

@@ -298,21 +298,26 @@ export default function Search() {
     <Container maxW="container.xl" py={8}>
       <VStack spacing={6} align="stretch">
         <Box>
-          <Heading size="lg" mb={2}>
-            Search Results
+          <Heading
+            size="lg"
+            mb={2}
+            bgGradient="linear(to-r, primary.500, accent.400)"
+            bgClip="text"
+          >
+            Discover Profiles
           </Heading>
-          <Text color="gray.600">
-            Refine your search with filters
+          <Text color="gray.600" fontSize="lg">
+            Connect with women in your field
           </Text>
         </Box>
 
         <Flex gap={6} align="start" direction={{ base: 'column', lg: 'row' }}>
           <Box flex="0 0 320px" w={{ base: '100%', lg: '320px' }}>
-            <Card>
-              <CardBody>
+            <Card bg="white" borderRadius="2xl" boxShadow="sm" borderWidth="1px" borderColor="gray.100">
+              <CardBody p={6}>
                 <VStack spacing={4} align="stretch">
                   <FormControl>
-                    <FormLabel fontSize="sm">Search Text</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Search Text</FormLabel>
                     <InputGroup>
                       <InputLeftElement pointerEvents="none">
                         <SearchIcon color="gray.400" />
@@ -322,16 +327,20 @@ export default function Search() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleKeyPress}
+                        borderRadius="lg"
+                        _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                       />
                     </InputGroup>
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel fontSize="sm">Industry</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Industry</FormLabel>
                     <Select
                       value={selectedIndustry}
                       onChange={(e) => setSelectedIndustry(e.target.value)}
                       placeholder="All Industries"
+                      borderRadius="lg"
+                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                     >
                       {INDUSTRIES.map((ind) => (
                         <option key={ind} value={ind}>
@@ -342,31 +351,37 @@ export default function Search() {
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel fontSize="sm">Location</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Location</FormLabel>
                     <Input
                       value={selectedLocation}
                       onChange={(e) => setSelectedLocation(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="e.g., New York"
+                      borderRadius="lg"
+                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                     />
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel fontSize="sm">School</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">School</FormLabel>
                     <Input
                       value={selectedSchool}
                       onChange={(e) => setSelectedSchool(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="e.g., MIT"
+                      borderRadius="lg"
+                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                     />
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel fontSize="sm">Career Status</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Career Status</FormLabel>
                     <Select
                       value={selectedCareerStatus}
                       onChange={(e) => setSelectedCareerStatus(e.target.value)}
                       placeholder="All Statuses"
+                      borderRadius="lg"
+                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                     >
                       {CAREER_STATUSES.map((status) => (
                         <option key={status.value} value={status.value}>
@@ -377,16 +392,18 @@ export default function Search() {
                   </FormControl>
 
                   <FormControl>
-                    <FormLabel fontSize="sm">Skills</FormLabel>
+                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Skills</FormLabel>
                     <HStack>
                       <Input
                         value={skillInput}
                         onChange={(e) => setSkillInput(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Add a skill"
+                        borderRadius="lg"
+                        _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
                       />
                       {skillInput && (
-                        <Button onClick={handleAddSkill} size="sm" colorScheme="primary">
+                        <Button onClick={handleAddSkill} size="sm" colorScheme="primary" borderRadius="full">
                           Add
                         </Button>
                       )}
@@ -397,11 +414,12 @@ export default function Search() {
                           <WrapItem key={skill}>
                             <Tag
                               size="md"
-                              colorScheme="primary"
+                              colorScheme="purple"
+                              borderRadius="full"
                               cursor="pointer"
                               onClick={() => handleRemoveSkill(skill)}
                             >
-                              {skill} x
+                              {skill} ×
                             </Tag>
                           </WrapItem>
                         ))}
@@ -422,14 +440,17 @@ export default function Search() {
                           : 'Loading...'
                       }
                       leftIcon={!loading ? <SearchIcon /> : undefined}
-                      w="full"
+                      flex="1"
+                      borderRadius="full"
+                      fontWeight="semibold"
                     >
                       Search
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       onClick={handleClearFilters}
                       isDisabled={loading}
+                      borderRadius="full"
                     >
                       Clear
                     </Button>
@@ -441,13 +462,13 @@ export default function Search() {
 
           <Box flex="1">
             {error && (
-              <Alert status="error" mb={4}>
+              <Alert status="error" mb={4} borderRadius="xl">
                 <AlertIcon />
                 {error}
               </Alert>
             )}
 
-            <Heading size="md" mb={4}>
+            <Heading size="md" mb={4} color="text.800">
               {hasSearched && !loadingStage
                 ? `${profiles.length} ${profiles.length === 1 ? 'Profile' : 'Profiles'} Found`
                 : ''}
@@ -473,26 +494,33 @@ export default function Search() {
                   <Card
                     key={profile.id}
                     cursor="pointer"
-                    transition="all 0.2s"
+                    transition="all 0.3s"
+                    bg="white"
+                    borderRadius="xl"
+                    borderWidth="1px"
+                    borderColor="gray.100"
                     _hover={{
-                      transform: 'translateY(-4px)',
+                      transform: 'translateY(-6px)',
                       shadow: 'lg',
+                      borderColor: 'primary.300',
                     }}
                     onClick={() => navigate(`/profile/${profile.id}`)}
                   >
-                    <CardBody>
+                    <CardBody p={5}>
                       <VStack align="stretch" spacing={3}>
                         <HStack spacing={3} align="start">
                           <Avatar
                             name={profile.full_name}
                             src={profile.profile_picture_url}
                             size="lg"
+                            border="2px solid"
+                            borderColor="accent.400"
                           />
                           <Box flex="1" minW="0">
-                            <Heading size="sm" noOfLines={1}>
+                            <Heading size="sm" noOfLines={1} fontWeight="semibold">
                               {profile.full_name}
                             </Heading>
-                            <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                            <Text fontSize="xs" color="gray.500" noOfLines={1}>
                               {profile.email}
                             </Text>
                           </Box>
@@ -500,36 +528,36 @@ export default function Search() {
 
                         <VStack align="stretch" spacing={1}>
                           <HStack fontSize="sm">
-                            <Icon viewBox="0 0 24 24" color="gray.500">
+                            <Icon viewBox="0 0 24 24" color="primary.500" boxSize={4}>
                               <path
                                 fill="currentColor"
                                 d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"
                               />
                             </Icon>
-                            <Text>{profile.custom_industry || profile.industry}</Text>
+                            <Text fontWeight="medium" color="text.700">{profile.custom_industry || profile.industry}</Text>
                           </HStack>
                           <HStack fontSize="sm">
-                            <Icon viewBox="0 0 24 24" color="gray.500">
+                            <Icon viewBox="0 0 24 24" color="accent.500" boxSize={4}>
                               <path
                                 fill="currentColor"
                                 d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
                               />
                             </Icon>
-                            <Text>{profile.location}</Text>
+                            <Text color="text.600">{profile.location}</Text>
                           </HStack>
                           {profile.current_school && (
                             <HStack fontSize="sm">
-                              <Icon viewBox="0 0 24 24" color="gray.500">
+                              <Icon viewBox="0 0 24 24" color="highlight.500" boxSize={4}>
                                 <path
                                   fill="currentColor"
                                   d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"
                                 />
                               </Icon>
-                              <Text>{profile.current_school}</Text>
+                              <Text color="text.600">{profile.current_school}</Text>
                             </HStack>
                           )}
                           {profile.career_status && (
-                            <Badge width="fit-content" colorScheme="green">
+                            <Badge width="fit-content" colorScheme="cyan" fontSize="xs" px={2} py={1} borderRadius="full">
                               {getCareerStatusLabel(profile.career_status)}
                             </Badge>
                           )}
@@ -539,24 +567,25 @@ export default function Search() {
                           fontSize="sm"
                           color="gray.600"
                           noOfLines={2}
+                          lineHeight="tall"
                         >
                           {profile.bio}
                         </Text>
 
                         {profile.skills && profile.skills.length > 0 && (
                           <>
-                            <Divider />
-                            <Wrap>
+                            <Divider borderColor="gray.200" />
+                            <Wrap spacing={2}>
                               {profile.skills.slice(0, 5).map((skill) => (
                                 <WrapItem key={skill}>
-                                  <Tag size="sm" variant="outline">
+                                  <Tag size="sm" variant="subtle" colorScheme="purple" borderRadius="full" fontSize="xs">
                                     {skill}
                                   </Tag>
                                 </WrapItem>
                               ))}
                               {profile.skills.length > 5 && (
                                 <WrapItem>
-                                  <Tag size="sm" variant="outline">
+                                  <Tag size="sm" variant="subtle" colorScheme="gray" borderRadius="full" fontSize="xs">
                                     +{profile.skills.length - 5} more
                                   </Tag>
                                 </WrapItem>
@@ -574,11 +603,11 @@ export default function Search() {
             {hasSearched && profiles.length === 0 && !loading && (
               <Center py={12}>
                 <VStack spacing={4}>
-                  <SearchIcon boxSize={16} color="gray.400" />
-                  <Heading size="md" color="gray.600">
+                  <SearchIcon boxSize={16} color="gray.300" />
+                  <Heading size="md" color="gray.500">
                     No profiles found
                   </Heading>
-                  <Text color="gray.500">
+                  <Text color="gray.400">
                     Try adjusting your search criteria
                   </Text>
                 </VStack>
