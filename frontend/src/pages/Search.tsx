@@ -23,6 +23,7 @@ import {
   useToast,
   InputGroup,
   InputLeftElement,
+  InputRightElement,
   Icon,
   Wrap,
   WrapItem,
@@ -62,63 +63,11 @@ export default function Search() {
   const location = useLocation()
   const toast = useToast()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedIndustry, setSelectedIndustry] = useState('')
-  const [selectedLocation, setSelectedLocation] = useState('')
-  const [selectedSchool, setSelectedSchool] = useState('')
-  const [selectedCareerStatus, setSelectedCareerStatus] = useState('')
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
-  const [skillInput, setSkillInput] = useState('')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
-  const [loadingStage, setLoadingStage] = useState<'parsing' | 'searching' | null>(null)
-  const [lastParsedQuery, setLastParsedQuery] = useState('')
-
-  const parseNaturalLanguage = async (query: string, token: string) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/profile/search/parse`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query }),
-        }
-      )
-
-      console.log('Response status:', response.status)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Parse error response:', errorText)
-        throw new Error(`Failed to parse search query: ${response.status}`)
-      }
-
-      const data = await response.json()
-      return data.filters as {
-        text_query: string
-        industry: string
-        location: string
-        school: string
-        career_status: string
-        skills: string[]
-      }
-    } catch (error) {
-      console.error('parseNaturalLanguage error:', error)
-      // Return empty filters on error so search can continue
-      return {
-        text_query: query,
-        industry: '',
-        location: '',
-        school: '',
-        career_status: '',
-        skills: []
-      }
-    }
-  }
+  const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false)
 
   useEffect(() => {
     handleSearch()
@@ -145,76 +94,13 @@ export default function Search() {
         return
       }
 
-      let effectiveQuery = override?.query ?? searchQuery
-      let effectiveIndustry = selectedIndustry
-      let effectiveLocation = selectedLocation
-      let effectiveSchool = selectedSchool
-      let effectiveCareerStatus = selectedCareerStatus
-      let effectiveSkills = selectedSkills
-
-      // Only trigger NLP parsing if the query text has changed
-      console.log('Current query:', effectiveQuery, 'Last parsed query:', lastParsedQuery)
-      const queryChanged = effectiveQuery && effectiveQuery !== lastParsedQuery
+      const effectiveQuery = override?.query ?? searchQuery
       
-      // Always show loading
+      // Show loading
       setLoading(true)
-      
-      // Handle NLP parsing first if query changed
-      if (queryChanged) {
-        // Show parsing stage
-        setLoadingStage('parsing')
-        
-        // Reset all filters before applying parsed ones
-        effectiveIndustry = ''
-        effectiveLocation = ''
-        effectiveSchool = ''
-        effectiveCareerStatus = ''
-        effectiveSkills = []
-        
-        setSelectedIndustry('')
-        setSelectedLocation('')
-        setSelectedSchool('')
-        setSelectedCareerStatus('')
-        setSelectedSkills([])
-        
-        try {
-          const parsed = await parseNaturalLanguage(effectiveQuery, session.access_token)
-          
-          // Mark the original query as parsed (not the text_query result)
-          setLastParsedQuery(effectiveQuery)
-          
-          // Use parsed values for the search, but keep original query visible
-          effectiveQuery = parsed.text_query || ''
-          effectiveIndustry = parsed.industry || ''
-          effectiveLocation = parsed.location || ''
-          effectiveSchool = parsed.school || ''
-          effectiveCareerStatus = parsed.career_status || ''
-          effectiveSkills = parsed.skills || []
-
-          // Update filter states (but not searchQuery, keep it as-is for display)
-          setSelectedIndustry(effectiveIndustry)
-          setSelectedLocation(effectiveLocation)
-          setSelectedSchool(effectiveSchool)
-          setSelectedCareerStatus(effectiveCareerStatus)
-          setSelectedSkills(effectiveSkills)
-          
-        } catch (parseErr) {
-          // Continue with original query if parsing fails
-          console.warn('Unable to parse search text:', parseErr)
-          setLastParsedQuery(effectiveQuery)
-        }
-      }
-      
-      // Now show the searching UI with skeleton loaders
-      setLoadingStage('searching')
 
       const params = new URLSearchParams()
       if (effectiveQuery) params.append('q', effectiveQuery)
-      if (effectiveIndustry) params.append('industry', effectiveIndustry)
-      if (effectiveLocation) params.append('location', effectiveLocation)
-      if (effectiveSchool) params.append('school', effectiveSchool)
-      if (effectiveCareerStatus) params.append('career_status', effectiveCareerStatus)
-      effectiveSkills.forEach(skill => params.append('skills', skill))
 
       // Handle VITE_API_URL: empty/undefined = relative path, otherwise use as prefix
       const apiBase = import.meta.env.VITE_API_URL || ''
@@ -250,42 +136,68 @@ export default function Search() {
       })
     } finally {
       setLoading(false)
-      setLoadingStage(null)
     }
   }
 
   const handleClearFilters = () => {
     setSearchQuery('')
-    setSelectedIndustry('')
-    setSelectedLocation('')
-    setSelectedSchool('')
-    setSelectedCareerStatus('')
-    setSelectedSkills([])
-    setSkillInput('')
     setHasSearched(false)
-    setLastParsedQuery('') // Reset the last parsed query when clearing
     setTimeout(() => handleSearch(), 100)
   }
 
-  const handleAddSkill = () => {
-    if (skillInput.trim() && !selectedSkills.includes(skillInput.trim())) {
-      setSelectedSkills([...selectedSkills, skillInput.trim()])
-      setSkillInput('')
-    }
-  }
+  const handleGenerateEmbeddings = async () => {
+    setGeneratingEmbeddings(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast({
+          title: 'Authentication required',
+          description: 'Please sign in to generate embeddings',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        })
+        return
+      }
 
-  const handleRemoveSkill = (skill: string) => {
-    setSelectedSkills(selectedSkills.filter(s => s !== skill))
+      const apiBase = import.meta.env.VITE_API_URL || ''
+      const response = await fetch(`${apiBase}/api/profile/embeddings/generate`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate embeddings')
+      }
+
+      const data = await response.json()
+      
+      toast({
+        title: 'Embeddings generated',
+        description: `Updated ${data.updated} profiles, ${data.failed} failed out of ${data.total} total`,
+        status: 'success',
+        duration: 7000,
+        isClosable: true,
+      })
+    } catch (err) {
+      toast({
+        title: 'Error generating embeddings',
+        description: err instanceof Error ? err.message : 'An error occurred',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+    } finally {
+      setGeneratingEmbeddings(false)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (skillInput.trim()) {
-        handleAddSkill()
-      } else {
-        handleSearch()
-      }
+      handleSearch()
     }
   }
 
@@ -295,184 +207,141 @@ export default function Search() {
   }
 
   return (
-    <Container maxW="container.xl" py={8}>
-      <VStack spacing={6} align="stretch">
-        <Box>
-          <Heading
-            size="lg"
-            mb={2}
-            bgGradient="linear(to-r, primary.500, accent.400)"
-            bgClip="text"
-          >
-            Discover Profiles
-          </Heading>
-          <Text color="gray.600" fontSize="lg">
-            Connect with women in your field
-          </Text>
-        </Box>
+    <Box bg="gray.50" minH="100vh">
+      <Box
+        bgGradient="linear(to-b, white, gray.50)"
+        pt={12}
+        pb={12}
+      >
+        <Container maxW="container.xl">
+          <VStack spacing={8} align="stretch">
+            <Flex justify="space-between" align="center">
+              <VStack align="start" spacing={1}>
+                <Heading
+                  size="2xl"
+                  bgGradient="linear(to-r, primary.600, accent.500)"
+                  bgClip="text"
+                  fontWeight="extrabold"
+                  letterSpacing="tight"
+                >
+                  Discover Profiles
+                </Heading>
+                <Text color="gray.600" fontSize="lg" fontWeight="medium">
+                  Find and connect with women in STEM
+                </Text>
+              </VStack>
+              <Button
+                size="sm"
+                variant="ghost"
+                colorScheme="purple"
+                onClick={handleGenerateEmbeddings}
+                isLoading={generatingEmbeddings}
+                loadingText="Generating..."
+                display={{ base: 'none', md: 'flex' }}
+                fontSize="sm"
+              >
+                Regenerate Embeddings
+              </Button>
+            </Flex>
 
-        <Flex gap={6} align="start" direction={{ base: 'column', lg: 'row' }}>
-          <Box flex="0 0 320px" w={{ base: '100%', lg: '320px' }}>
-            <Card bg="white" borderRadius="2xl" boxShadow="sm" borderWidth="1px" borderColor="gray.100">
-              <CardBody p={6}>
-                <VStack spacing={4} align="stretch">
-                  <FormControl>
-                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Search Text</FormLabel>
-                    <InputGroup>
-                      <InputLeftElement pointerEvents="none">
-                        <SearchIcon color="gray.400" />
-                      </InputLeftElement>
-                      <Input
-                        placeholder="Name, school, industry..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        borderRadius="lg"
-                        _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
-                      />
-                    </InputGroup>
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Industry</FormLabel>
-                    <Select
-                      value={selectedIndustry}
-                      onChange={(e) => setSelectedIndustry(e.target.value)}
-                      placeholder="All Industries"
-                      borderRadius="lg"
-                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
-                    >
-                      {INDUSTRIES.map((ind) => (
-                        <option key={ind} value={ind}>
-                          {ind}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Location</FormLabel>
+            <Box maxW="1000px" mx="auto" w="full">
+              <Box
+                w="full"
+                position="relative"
+                bg="white"
+                borderRadius="full"
+                shadow="lg"
+                border="1px"
+                borderColor="gray.100"
+              >
+                <Flex align="center" gap={2} p={2}>
+                  <InputGroup size="lg" flex="1">
+                    <InputLeftElement h="full" pl={2} pointerEvents="none">
+                      <SearchIcon color="primary.500" boxSize={5} />
+                    </InputLeftElement>
                     <Input
-                      value={selectedLocation}
-                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      placeholder="Search by name, location, school, industry, skills..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder="e.g., New York"
-                      borderRadius="lg"
-                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
-                    />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">School</FormLabel>
-                    <Input
-                      value={selectedSchool}
-                      onChange={(e) => setSelectedSchool(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="e.g., MIT"
-                      borderRadius="lg"
-                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
-                    />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Career Status</FormLabel>
-                    <Select
-                      value={selectedCareerStatus}
-                      onChange={(e) => setSelectedCareerStatus(e.target.value)}
-                      placeholder="All Statuses"
-                      borderRadius="lg"
-                      _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
-                    >
-                      {CAREER_STATUSES.map((status) => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel fontSize="sm" fontWeight="semibold" color="text.700">Skills</FormLabel>
-                    <HStack>
-                      <Input
-                        value={skillInput}
-                        onChange={(e) => setSkillInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Add a skill"
-                        borderRadius="lg"
-                        _focus={{ borderColor: 'primary.400', boxShadow: '0 0 0 1px var(--chakra-colors-primary-400)' }}
-                      />
-                      {skillInput && (
-                        <Button onClick={handleAddSkill} size="sm" colorScheme="primary" borderRadius="full">
-                          Add
-                        </Button>
-                      )}
-                    </HStack>
-                    {selectedSkills.length > 0 && (
-                      <Wrap mt={2}>
-                        {selectedSkills.map((skill) => (
-                          <WrapItem key={skill}>
-                            <Tag
-                              size="md"
-                              colorScheme="purple"
-                              borderRadius="full"
-                              cursor="pointer"
-                              onClick={() => handleRemoveSkill(skill)}
-                            >
-                              {skill} ×
-                            </Tag>
-                          </WrapItem>
-                        ))}
-                      </Wrap>
-                    )}
-                  </FormControl>
-
-                  <HStack spacing={3}>
-                    <Button
-                      colorScheme="primary"
-                      onClick={() => handleSearch()}
-                      isLoading={loading}
-                      loadingText={
-                        loadingStage === 'parsing' 
-                          ? 'Parsing...' 
-                          : loadingStage === 'searching' 
-                          ? 'Searching...'
-                          : 'Loading...'
-                      }
-                      leftIcon={!loading ? <SearchIcon /> : undefined}
-                      flex="1"
                       borderRadius="full"
-                      fontWeight="semibold"
-                    >
-                      Search
-                    </Button>
+                      fontSize="md"
+                      h="56px"
+                      pl="52px"
+                      pr={4}
+                      border="none"
+                      bg="transparent"
+                      _placeholder={{ color: 'gray.400' }}
+                      _focus={{
+                        outline: 'none',
+                        boxShadow: 'none'
+                      }}
+                    />
+                  </InputGroup>
+                  
+                  {searchQuery && (
                     <Button
+                      size="sm"
                       variant="ghost"
                       onClick={handleClearFilters}
                       isDisabled={loading}
                       borderRadius="full"
+                      fontSize="sm"
+                      color="gray.500"
+                      mr={2}
                     >
                       Clear
                     </Button>
-                  </HStack>
-                </VStack>
-              </CardBody>
-            </Card>
-          </Box>
+                  )}
 
-          <Box flex="1">
-            {error && (
-              <Alert status="error" mb={4} borderRadius="xl">
-                <AlertIcon />
-                {error}
-              </Alert>
+                  <Button
+                    colorScheme="primary"
+                    onClick={() => handleSearch()}
+                    isLoading={loading}
+                    loadingText="Searching..."
+                    leftIcon={!loading ? <SearchIcon /> : undefined}
+                    size="lg"
+                    px={8}
+                    h="52px"
+                    borderRadius="full"
+                    fontWeight="bold"
+                    fontSize="md"
+                    shadow="sm"
+                    flexShrink={0}
+                    _hover={{
+                      shadow: 'md',
+                      transform: 'translateY(-1px)',
+                      bgGradient: 'linear(to-r, primary.600, primary.500)'
+                    }}
+                    _active={{
+                      transform: 'translateY(0)',
+                      shadow: 'sm'
+                    }}
+                    transition="all 0.2s"
+                  >
+                    Search
+                  </Button>
+                </Flex>
+              </Box>
+            </Box>
+          </VStack>
+        </Container>
+      </Box>
+
+      <Container maxW="container.xl" pt={8} pb={12}>
+        <VStack spacing={6} align="stretch">
+          {error && (
+            <Alert status="error" borderRadius="xl" bg="red.50" borderColor="red.200" borderWidth="1px">
+              <AlertIcon color="red.500" />
+              <Text color="red.700">{error}</Text>
+            </Alert>
+          )}
+
+            {hasSearched && !loading && (
+              <Heading size="md" mb={6} color="text.700" fontWeight="semibold">
+                {profiles.length} {profiles.length === 1 ? 'Profile' : 'Profiles'} Found
+              </Heading>
             )}
-
-            <Heading size="md" mb={4} color="text.800">
-              {hasSearched && !loadingStage
-                ? `${profiles.length} ${profiles.length === 1 ? 'Profile' : 'Profiles'} Found`
-                : ''}
-            </Heading>
 
             {loading ? (
               <Center py={20}>
@@ -489,35 +358,38 @@ export default function Search() {
                 </VStack>
               </Center>
             ) : (
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                 {profiles.map((profile) => (
                   <Card
                     key={profile.id}
                     cursor="pointer"
-                    transition="all 0.3s"
+                    transition="all 0.3s ease"
                     bg="white"
-                    borderRadius="xl"
+                    borderRadius="2xl"
                     borderWidth="1px"
                     borderColor="gray.100"
+                    overflow="hidden"
+                    shadow="sm"
                     _hover={{
-                      transform: 'translateY(-6px)',
-                      shadow: 'lg',
-                      borderColor: 'primary.300',
+                      transform: 'translateY(-4px)',
+                      shadow: 'xl',
+                      borderColor: 'primary.200',
                     }}
                     onClick={() => navigate(`/profile/${profile.id}`)}
                   >
-                    <CardBody p={5}>
-                      <VStack align="stretch" spacing={3}>
-                        <HStack spacing={3} align="start">
+                    <CardBody p={6}>
+                      <VStack align="stretch" spacing={4}>
+                        <HStack spacing={4} align="start">
                           <Avatar
                             name={profile.full_name}
                             src={profile.profile_picture_url}
                             size="lg"
-                            border="2px solid"
-                            borderColor="accent.400"
+                            border="3px solid"
+                            borderColor="primary.100"
+                            shadow="sm"
                           />
                           <Box flex="1" minW="0">
-                            <Heading size="sm" noOfLines={1} fontWeight="semibold">
+                            <Heading size="sm" noOfLines={1} fontWeight="bold" mb={1}>
                               {profile.full_name}
                             </Heading>
                             <Text fontSize="xs" color="gray.500" noOfLines={1}>
@@ -526,67 +398,92 @@ export default function Search() {
                           </Box>
                         </HStack>
 
-                        <VStack align="stretch" spacing={1}>
-                          <HStack fontSize="sm">
+                        <VStack align="stretch" spacing={2}>
+                          <HStack fontSize="sm" color="gray.700">
                             <Icon viewBox="0 0 24 24" color="primary.500" boxSize={4}>
                               <path
                                 fill="currentColor"
                                 d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"
                               />
                             </Icon>
-                            <Text fontWeight="medium" color="text.700">{profile.custom_industry || profile.industry}</Text>
+                            <Text fontWeight="medium" noOfLines={1}>{profile.custom_industry || profile.industry}</Text>
                           </HStack>
-                          <HStack fontSize="sm">
-                            <Icon viewBox="0 0 24 24" color="accent.500" boxSize={4}>
-                              <path
-                                fill="currentColor"
-                                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
-                              />
-                            </Icon>
-                            <Text color="text.600">{profile.location}</Text>
-                          </HStack>
+                          {profile.location && (
+                            <HStack fontSize="sm" color="gray.700">
+                              <Icon viewBox="0 0 24 24" color="accent.500" boxSize={4}>
+                                <path
+                                  fill="currentColor"
+                                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                                />
+                              </Icon>
+                              <Text noOfLines={1}>{profile.location}</Text>
+                            </HStack>
+                          )}
                           {profile.current_school && (
-                            <HStack fontSize="sm">
+                            <HStack fontSize="sm" color="gray.700">
                               <Icon viewBox="0 0 24 24" color="highlight.500" boxSize={4}>
                                 <path
                                   fill="currentColor"
                                   d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"
                                 />
                               </Icon>
-                              <Text color="text.600">{profile.current_school}</Text>
+                              <Text noOfLines={1}>{profile.current_school}</Text>
                             </HStack>
                           )}
                           {profile.career_status && (
-                            <Badge width="fit-content" colorScheme="cyan" fontSize="xs" px={2} py={1} borderRadius="full">
+                            <Badge
+                              width="fit-content"
+                              colorScheme="purple"
+                              fontSize="xs"
+                              px={3}
+                              py={1}
+                              borderRadius="full"
+                              fontWeight="semibold"
+                            >
                               {getCareerStatusLabel(profile.career_status)}
                             </Badge>
                           )}
                         </VStack>
 
-                        <Text
-                          fontSize="sm"
-                          color="gray.600"
-                          noOfLines={2}
-                          lineHeight="tall"
-                        >
-                          {profile.bio}
-                        </Text>
+                        {profile.bio && (
+                          <Text
+                            fontSize="sm"
+                            color="gray.600"
+                            noOfLines={3}
+                            lineHeight="tall"
+                          >
+                            {profile.bio}
+                          </Text>
+                        )}
 
                         {profile.skills && profile.skills.length > 0 && (
                           <>
                             <Divider borderColor="gray.200" />
                             <Wrap spacing={2}>
-                              {profile.skills.slice(0, 5).map((skill) => (
+                              {profile.skills.slice(0, 4).map((skill) => (
                                 <WrapItem key={skill}>
-                                  <Tag size="sm" variant="subtle" colorScheme="purple" borderRadius="full" fontSize="xs">
+                                  <Tag
+                                    size="sm"
+                                    variant="subtle"
+                                    colorScheme="purple"
+                                    borderRadius="full"
+                                    fontSize="xs"
+                                    fontWeight="medium"
+                                  >
                                     {skill}
                                   </Tag>
                                 </WrapItem>
                               ))}
-                              {profile.skills.length > 5 && (
+                              {profile.skills.length > 4 && (
                                 <WrapItem>
-                                  <Tag size="sm" variant="subtle" colorScheme="gray" borderRadius="full" fontSize="xs">
-                                    +{profile.skills.length - 5} more
+                                  <Tag
+                                    size="sm"
+                                    variant="subtle"
+                                    colorScheme="gray"
+                                    borderRadius="full"
+                                    fontSize="xs"
+                                  >
+                                    +{profile.skills.length - 4}
                                   </Tag>
                                 </WrapItem>
                               )}
@@ -601,21 +498,26 @@ export default function Search() {
             )}
 
             {hasSearched && profiles.length === 0 && !loading && (
-              <Center py={12}>
+              <Center py={20}>
                 <VStack spacing={4}>
-                  <SearchIcon boxSize={16} color="gray.300" />
-                  <Heading size="md" color="gray.500">
+                  <Box
+                    p={6}
+                    borderRadius="full"
+                    bg="gray.100"
+                  >
+                    <SearchIcon boxSize={12} color="gray.400" />
+                  </Box>
+                  <Heading size="md" color="gray.600" fontWeight="semibold">
                     No profiles found
                   </Heading>
-                  <Text color="gray.400">
-                    Try adjusting your search criteria
+                  <Text color="gray.500" textAlign="center" maxW="sm">
+                    Try adjusting your search terms or try a different query
                   </Text>
                 </VStack>
               </Center>
             )}
-          </Box>
-        </Flex>
-      </VStack>
-    </Container>
+        </VStack>
+      </Container>
+    </Box>
   )
 }

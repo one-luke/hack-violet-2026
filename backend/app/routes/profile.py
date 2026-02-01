@@ -2,7 +2,8 @@ import traceback
 from flask import Blueprint, request, jsonify
 from app.middleware.auth import require_auth
 from app.supabase_client import supabase
-from app.services.openrouter_nlp import parse_search_query, recommend_profile_ids
+from app.services.openrouter_nlp import recommend_profile_ids
+from app.services.embedding_service import generate_embedding, generate_profile_embedding
 
 bp = Blueprint('profile', __name__)
 
@@ -34,6 +35,11 @@ def create_profile():
         # Add user_id to profile data
         data['id'] = user_id
         
+        # Generate embedding for the new profile
+        embedding = generate_profile_embedding(data)
+        if embedding:
+            data['embedding'] = embedding
+        
         response = supabase.table('profiles').insert(data).execute()
         
         return jsonify(response.data[0]), 201
@@ -48,6 +54,15 @@ def update_profile():
     try:
         user_id = request.user.user.id
         data = request.json
+        
+        # Generate new embedding for the updated profile
+        # First get the existing profile to merge with updates
+        existing_response = supabase.table('profiles').select('*').eq('id', user_id).single().execute()
+        if existing_response.data:
+            merged_profile = {**existing_response.data, **data}
+            embedding = generate_profile_embedding(merged_profile)
+            if embedding:
+                data['embedding'] = embedding
         
         response = supabase.table('profiles').update(data).eq('id', user_id).execute()
         
@@ -146,16 +161,72 @@ def search_profiles():
                 if any(skill in (p.get('skills') or []) for skill in skills)
             ]
         
-        # Filter by text search
+        # Apply semantic search if query exists - do this first for best relevance ordering
         if search_query:
-            search_lower = search_query.lower()
-            filtered_profiles = [
-                p for p in filtered_profiles
-                if (search_lower in (p.get('full_name') or '').lower() or
-                    search_lower in (p.get('bio') or '').lower() or
-                    search_lower in (p.get('custom_industry') or '').lower() or
-                    search_lower in (p.get('industry') or '').lower())
-            ]
+            # Generate embedding for the search query
+            query_embedding = generate_embedding(search_query)
+            
+            if query_embedding:
+                try:
+                    # Use Supabase RPC to call the semantic search function
+                    result = supabase.rpc(
+                        'search_profiles_semantic',
+                        {
+                            'query_embedding': query_embedding,
+                            'match_threshold': 0.2,  # Lower threshold for more results
+                            'match_count': 200  # Get more results to have enough after filtering
+                        }
+                    ).execute()
+                    
+                    if result.data:
+                        # Create a map of profile IDs with their similarity scores
+                        similarity_map = {p['id']: p['similarity'] for p in result.data}
+                        semantic_profile_ids = set(similarity_map.keys())
+                        
+                        # Filter to only include profiles that match both:
+                        # 1. Semantic search results (for relevance)
+                        # 2. Sidebar filters (for precision)
+                        filtered_profiles = [
+                            p for p in filtered_profiles
+                            if p.get('id') in semantic_profile_ids
+                        ]
+                        
+                        # Sort by similarity score (highest first) - this ensures relevance ordering
+                        filtered_profiles.sort(
+                            key=lambda p: similarity_map.get(p.get('id'), 0),
+                            reverse=True
+                        )
+                        
+                        # Add similarity score to each profile for debugging/display
+                        for p in filtered_profiles:
+                            p['_similarity'] = similarity_map.get(p.get('id'), 0)
+                    else:
+                        # No semantic matches found
+                        filtered_profiles = []
+                        
+                except Exception as semantic_error:
+                    print(f"Semantic search error: {str(semantic_error)}")
+                    import traceback
+                    traceback.print_exc()
+                    # Fall back to basic text search if semantic search fails
+                    search_lower = search_query.lower()
+                    filtered_profiles = [
+                        p for p in filtered_profiles
+                        if (search_lower in (p.get('full_name') or '').lower() or
+                            search_lower in (p.get('bio') or '').lower() or
+                            search_lower in (p.get('custom_industry') or '').lower() or
+                            search_lower in (p.get('industry') or '').lower())
+                    ]
+            else:
+                # Fall back to basic text search if embedding generation fails
+                search_lower = search_query.lower()
+                filtered_profiles = [
+                    p for p in filtered_profiles
+                    if (search_lower in (p.get('full_name') or '').lower() or
+                        search_lower in (p.get('bio') or '').lower() or
+                        search_lower in (p.get('custom_industry') or '').lower() or
+                        search_lower in (p.get('industry') or '').lower())
+                ]
         
         print(f"Returning {len(filtered_profiles)} filtered profiles")
         return jsonify(filtered_profiles), 200
@@ -165,42 +236,57 @@ def search_profiles():
         traceback.print_exc()
         return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
 
-@bp.route('/search/parse', methods=['POST'])
+@bp.route('/embeddings/generate', methods=['POST'])
 @require_auth
-def parse_search():
-    """Parse a natural language query into structured filters"""
+def generate_embeddings():
+    """Regenerate embeddings for all profiles (or only missing ones if force=false)"""
     try:
-        data = request.json or {}
-        query = (data.get('query') or '').strip()
-        if not query:
-            return jsonify({'error': 'Query is required'}), 400
-
-        parsed = parse_search_query(query)
-        # Normalize missing fields
-        result = {
-            'text_query': parsed.get('text_query', '') or '',
-            'industry': parsed.get('industry', '') or '',
-            'location': parsed.get('location', '') or '',
-            'school': parsed.get('school', '') or '',
-            'career_status': parsed.get('career_status', '') or '',
-            'skills': parsed.get('skills', []) or [],
-        }
-
-        return jsonify({'filters': result}), 200
-    except Exception as e:
-        print("OpenRouter parse error:", str(e))
-        traceback.print_exc()
-        # Return a graceful fallback instead of 500 error
+        # Check if we should regenerate all or only missing embeddings
+        force_regenerate = request.args.get('force', 'true').lower() == 'true'
+        
+        if force_regenerate:
+            # Get all profiles to regenerate embeddings
+            response = supabase.table('profiles').select('*').execute()
+            profiles_to_update = response.data or []
+            print(f"Regenerating embeddings for all {len(profiles_to_update)} profiles")
+        else:
+            # Only get profiles without embeddings
+            response = supabase.table('profiles').select('*').is_('embedding', 'null').execute()
+            profiles_to_update = response.data or []
+            print(f"Found {len(profiles_to_update)} profiles without embeddings")
+        
+        updated_count = 0
+        failed_count = 0
+        
+        for profile in profiles_to_update:
+            try:
+                embedding = generate_profile_embedding(profile)
+                if embedding:
+                    # Update the profile with the embedding
+                    supabase.table('profiles').update(
+                        {'embedding': embedding}
+                    ).eq('id', profile['id']).execute()
+                    updated_count += 1
+                    print(f"Generated embedding for profile {profile['id']}")
+                else:
+                    failed_count += 1
+                    print(f"Failed to generate embedding for profile {profile['id']}")
+            except Exception as e:
+                failed_count += 1
+                print(f"Error updating profile {profile['id']}: {str(e)}")
+        
         return jsonify({
-            'filters': {
-                'text_query': query if 'query' in locals() else '',
-                'industry': '',
-                'location': '',
-                'school': '',
-                'career_status': '',
-                'skills': []
-            }
+            'message': 'Embeddings generated',
+            'updated': updated_count,
+            'failed': failed_count,
+            'total': len(profiles_to_update),
+            'regenerated_all': force_regenerate
         }), 200
+        
+    except Exception as e:
+        print(f"Error generating embeddings: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @bp.route('/recommendations', methods=['GET'])
 @require_auth

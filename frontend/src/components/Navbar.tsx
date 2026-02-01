@@ -17,7 +17,7 @@ import {
   Container,
 } from '@chakra-ui/react'
 import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from './logo.png'
 import { useState, useEffect } from 'react'
@@ -25,9 +25,22 @@ import { supabase } from '../lib/supabase'
 
 const Navbar = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, signOut } = useAuth()
   const [searchInput, setSearchInput] = useState('')
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null)
+
+  // Update search input when on search page with query parameter
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      const params = new URLSearchParams(location.search)
+      const q = params.get('q') || ''
+      setSearchInput(q)
+    } else {
+      // Clear search input when navigating away from search page
+      setSearchInput('')
+    }
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     const fetchProfilePicture = async () => {
