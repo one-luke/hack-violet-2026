@@ -7,6 +7,8 @@
 SUPABASE_URL=https://xxxxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbGc... (service_role key)
 FLASK_SECRET_KEY=your-random-secret-string
+OPENROUTER_API_KEY=sk-or-v1-... (optional, for AI-powered search)
+OPENROUTER_MODEL=openai/gpt-4o-mini (optional, default: openai/gpt-oss-20b:free)
 ```
 
 ### Frontend Variables (React/Vite)
@@ -75,6 +77,8 @@ After deploying, test each part:
 SUPABASE_URL=https://xxxxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbGc... (service_role)
 FLASK_SECRET_KEY=dev-secret-key
+OPENROUTER_API_KEY=sk-or-v1-... (optional)
+OPENROUTER_MODEL=openai/gpt-4o-mini (optional)
 
 # Frontend (in frontend/.env)
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
@@ -88,6 +92,8 @@ VITE_API_URL=http://localhost:5001
 SUPABASE_URL=https://xxxxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbGc... (service_role)
 FLASK_SECRET_KEY=<secure-random-string>
+OPENROUTER_API_KEY=sk-or-v1-... (optional)
+OPENROUTER_MODEL=openai/gpt-4o-mini (optional)
 
 # Frontend
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
@@ -96,3 +102,5 @@ VITE_API_URL=     (EMPTY!)
 ```
 
 The key difference: `VITE_API_URL` is `http://localhost:5001` locally and **empty** in production.
+
+**Note:** The `OPENROUTER_API_KEY` is optional. If not provided, the app will use basic text matching for search instead of AI-powered natural language parsing.

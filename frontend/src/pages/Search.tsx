@@ -76,30 +76,47 @@ export default function Search() {
   const [lastParsedQuery, setLastParsedQuery] = useState('')
 
   const parseNaturalLanguage = async (query: string, token: string) => {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/profile/search/parse`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/profile/search/parse`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query }),
+        }
+      )
+
+      console.log('Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Parse error response:', errorText)
+        throw new Error(`Failed to parse search query: ${response.status}`)
       }
-    )
 
-    if (!response.ok) {
-      throw new Error('Failed to parse search query')
-    }
-
-    const data = await response.json()
-    return data.filters as {
-      text_query: string
-      industry: string
-      location: string
-      school: string
-      career_status: string
-      skills: string[]
+      const data = await response.json()
+      return data.filters as {
+        text_query: string
+        industry: string
+        location: string
+        school: string
+        career_status: string
+        skills: string[]
+      }
+    } catch (error) {
+      console.error('parseNaturalLanguage error:', error)
+      // Return empty filters on error so search can continue
+      return {
+        text_query: query,
+        industry: '',
+        location: '',
+        school: '',
+        career_status: '',
+        skills: []
+      }
     }
   }
 

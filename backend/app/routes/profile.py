@@ -158,7 +158,17 @@ def parse_search():
     except Exception as e:
         print("OpenRouter parse error:", str(e))
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        # Return a graceful fallback instead of 500 error
+        return jsonify({
+            'filters': {
+                'text_query': query if 'query' in locals() else '',
+                'industry': '',
+                'location': '',
+                'school': '',
+                'career_status': '',
+                'skills': []
+            }
+        }), 200
 
 @bp.route('/recommendations', methods=['GET'])
 @require_auth

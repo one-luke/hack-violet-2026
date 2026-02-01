@@ -152,7 +152,8 @@ def _fallback_parse(query: str) -> dict:
 def parse_search_query(query: str) -> dict:
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
-        raise ValueError("OPENROUTER_API_KEY is not set")
+        # Fallback to basic parsing if API key not available
+        return _fallback_parse(query)
 
     model = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-20b:free")
     app_url = os.getenv("OPENROUTER_APP_URL", "")
