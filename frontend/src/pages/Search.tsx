@@ -77,7 +77,7 @@ export default function Search() {
 
   const parseNaturalLanguage = async (query: string, token: string) => {
     const response = await fetch(
-      'http://localhost:5001/api/profile/search/parse',
+      `${import.meta.env.VITE_API_URL}/api/profile/search/parse`,
       {
         method: 'POST',
         headers: {
