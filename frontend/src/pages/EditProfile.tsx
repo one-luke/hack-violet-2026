@@ -14,12 +14,10 @@ import {
   useToast,
   FormErrorMessage,
   Select,
-  SimpleGrid,
   Tag,
   TagLabel,
   TagCloseButton,
   HStack,
-  Divider,
   Center,
   Spinner,
   Avatar,
@@ -27,6 +25,8 @@ import {
   Radio,
   RadioGroup,
   Stack,
+  Card,
+  CardBody,
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -338,34 +338,56 @@ const EditProfile = () => {
   }
 
   return (
-    <Container maxW="container.md" py={8}>
-      <VStack spacing={8} align="stretch">
-        <Box>
-          <Heading size="lg" mb={2}>Edit Profile</Heading>
-          <Text color="text.500">
-            Update your profile information
-          </Text>
-        </Box>
+    <Box bg="gray.50" minH="calc(100vh - 64px)">
+      {/* Header */}
+      <Box bg="white" borderBottom="1px" borderColor="gray.200" py={6} mb={8}>
+        <Container maxW="container.lg">
+          <VStack spacing={2} align="start">
+            <HStack spacing={3}>
+              <Avatar
+                size="md"
+                src={profilePicturePreview}
+                name={fullName}
+              />
+              <Box>
+                <Heading size="lg" color="gray.800">Edit Profile</Heading>
+                <Text color="gray.600" fontSize="sm">
+                  Update your profile information to keep your connections informed
+                </Text>
+              </Box>
+            </HStack>
+          </VStack>
+        </Container>
+      </Box>
 
-        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-          <form 
-            onSubmit={handleSubmit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-              }
-            }}
-          >
-            <VStack spacing={5}>
-              <FormControl>
-                <FormLabel textAlign="center">Profile Picture</FormLabel>
-                <VStack spacing={3}>
+      <Container maxW="container.lg" pb={8}>
+        <form 
+          onSubmit={handleSubmit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+            }
+          }}
+        >
+          <VStack spacing={6} align="stretch">
+            {/* Profile Picture Section */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bg="purple.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Profile Picture</Heading>
+                </HStack>
+                <VStack spacing={4}>
                   <Avatar
                     size="2xl"
                     src={profilePicturePreview}
                     name={fullName}
                     cursor="pointer"
                     onClick={() => fileInputRef.current?.click()}
+                    border="4px solid"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: 'primary.400', transform: 'scale(1.05)' }}
+                    transition="all 0.2s"
                   />
                   <Input
                     ref={fileInputRef}
@@ -375,251 +397,342 @@ const EditProfile = () => {
                     display="none"
                   />
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size="md"
                     colorScheme="primary"
+                    variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     Change Photo
                   </Button>
-                  <Text fontSize="xs" color="text.500">
+                  <Text fontSize="xs" color="gray.500">
                     Max 5MB • JPG, PNG, or GIF
                   </Text>
                 </VStack>
-              </FormControl>
+              </CardBody>
+            </Card>
 
-              <FormControl isInvalid={!!errors.fullName}>
-                <FormLabel>Full Name *</FormLabel>
-                <Input
-                  value={fullName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-                  placeholder="Jane Doe"
-                  size="lg"
-                />
-                <FormErrorMessage>{errors.fullName}</FormErrorMessage>
-              </FormControl>
-
-              <FormControl isInvalid={!!errors.phone}>
-                <FormLabel>Phone Number</FormLabel>
-                <Input
-                  value={phone}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                  size="lg"
-                />
-                <FormHelperText>
-                  Optional - Format: +1 234-567-8900 or (234) 567-8900
-                </FormHelperText>
-                <FormErrorMessage>{errors.phone}</FormErrorMessage>
-              </FormControl>
-
-              <FormControl isInvalid={!!errors.location}>
-                <FormLabel>Location *</FormLabel>
-                <Input
-                  value={location}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
-                  placeholder="San Francisco, CA"
-                  size="lg"
-                />
-                <FormErrorMessage>{errors.location}</FormErrorMessage>
-              </FormControl>
-
-              <Divider />
-
-              <FormControl isInvalid={!!errors.industry}>
-                <FormLabel>Industry / Field *</FormLabel>
-                <Select
-                  value={industry}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setIndustry(e.target.value)}
-                  placeholder="Select your field"
-                  size="lg"
-                >
-                  {STEM_FIELDS.map((field) => (
-                    <option key={field} value={field}>
-                      {field}
-                    </option>
-                  ))}
-                </Select>
-                <FormErrorMessage>{errors.industry}</FormErrorMessage>
-              </FormControl>
-
-              {industry === 'Other' && (
-                <FormControl isInvalid={!!errors.customIndustry}>
-                  <FormLabel>Specify Your Industry *</FormLabel>
-                  <Input
-                    value={customIndustry}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomIndustry(e.target.value)}
-                    placeholder="e.g., Environmental Science, Biomedical Engineering"
-                    size="lg"
-                  />
-                  <FormErrorMessage>{errors.customIndustry}</FormErrorMessage>
-                </FormControl>
-              )}
-
-              <FormControl>
-                <FormLabel>Current School</FormLabel>
-                <Input
-                  value={currentSchool}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSchool(e.target.value)}
-                  placeholder="e.g., MIT, Stanford University"
-                  size="lg"
-                />
-                <FormHelperText>
-                  Optional - Current or most recent school
-                </FormHelperText>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Career Status</FormLabel>
-                <RadioGroup value={careerStatus} onChange={setCareerStatus}>
-                  <Stack spacing={3}>
-                    <Radio value="in_industry" size="lg">
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Currently in Industry</Text>
-                        <Text fontSize="sm" color="gray.600">Working in my field</Text>
-                      </VStack>
-                    </Radio>
-                    <Radio value="seeking_opportunities" size="lg">
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Seeking Opportunities</Text>
-                        <Text fontSize="sm" color="gray.600">Actively looking for positions</Text>
-                      </VStack>
-                    </Radio>
-                    <Radio value="student" size="lg">
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Student</Text>
-                        <Text fontSize="sm" color="gray.600">Currently studying</Text>
-                      </VStack>
-                    </Radio>
-                    <Radio value="career_break" size="lg">
-                      <VStack align="start" spacing={0}>
-                        <Text fontWeight="medium">Career Break</Text>
-                        <Text fontSize="sm" color="gray.600">Taking time off</Text>
-                      </VStack>
-                    </Radio>
-                  </Stack>
-                </RadioGroup>
-              </FormControl>
-
-              <FormControl isInvalid={!!errors.bio}>
-                <FormLabel>Bio *</FormLabel>
-                <Textarea
-                  value={bio}
-                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBio(e.target.value)}
-                  placeholder="Tell us about yourself..."
-                  rows={6}
-                  size="lg"
-                />
-                <Text fontSize="xs" color="text.500" mt={1}>
-                  {bio.length} characters (minimum 50)
-                </Text>
-                <FormErrorMessage>{errors.bio}</FormErrorMessage>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Skills & Interests</FormLabel>
-                <HStack>
-                  <Input
-                    value={currentSkill}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSkill(e.target.value)}
-                    placeholder="e.g., Python, Machine Learning"
-                    size="lg"
-                  />
-                  <Button onClick={addSkill} colorScheme="primary">
-                    Add
-                  </Button>
+            {/* Basic Information */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bg="primary.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Basic Information</Heading>
                 </HStack>
-                {skills.length > 0 && (
-                  <HStack spacing={2} mt={3} flexWrap="wrap">
-                    {skills.map((skill) => (
-                      <Tag
-                        key={skill}
+                <VStack spacing={5}>
+                  <FormControl isInvalid={!!errors.fullName}>
+                    <FormLabel fontWeight="semibold">Full Name *</FormLabel>
+                    <Input
+                      value={fullName}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
+                      placeholder="Jane Doe"
+                      size="lg"
+                      bg="white"
+                    />
+                    <FormErrorMessage>{errors.fullName}</FormErrorMessage>
+                  </FormControl>
+
+                  <FormControl isInvalid={!!errors.phone}>
+                    <FormLabel fontWeight="semibold">Phone Number</FormLabel>
+                    <Input
+                      value={phone}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+                      placeholder="+1 (555) 123-4567"
+                      size="lg"
+                      bg="white"
+                    />
+                    <FormHelperText fontSize="xs">
+                      Optional - Format: +1 234-567-8900 or (234) 567-8900
+                    </FormHelperText>
+                    <FormErrorMessage>{errors.phone}</FormErrorMessage>
+                  </FormControl>
+
+                  <FormControl isInvalid={!!errors.location}>
+                    <FormLabel fontWeight="semibold">Location *</FormLabel>
+                    <Input
+                      value={location}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
+                      placeholder="San Francisco, CA"
+                      size="lg"
+                      bg="white"
+                    />
+                    <FormErrorMessage>{errors.location}</FormErrorMessage>
+                  </FormControl>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Professional Information */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bg="accent.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Professional Information</Heading>
+                </HStack>
+                <VStack spacing={5}>
+                  <FormControl isInvalid={!!errors.industry}>
+                    <FormLabel fontWeight="semibold">Industry / Field *</FormLabel>
+                    <Select
+                      value={industry}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setIndustry(e.target.value)}
+                      placeholder="Select your field"
+                      size="lg"
+                      bg="white"
+                    >
+                      {STEM_FIELDS.map((field) => (
+                        <option key={field} value={field}>
+                          {field}
+                        </option>
+                      ))}
+                    </Select>
+                    <FormErrorMessage>{errors.industry}</FormErrorMessage>
+                  </FormControl>
+
+                  {industry === 'Other' && (
+                    <FormControl isInvalid={!!errors.customIndustry}>
+                      <FormLabel fontWeight="semibold">Specify Your Industry *</FormLabel>
+                      <Input
+                        value={customIndustry}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomIndustry(e.target.value)}
+                        placeholder="e.g., Environmental Science, Biomedical Engineering"
                         size="lg"
-                        borderRadius="full"
-                        variant="solid"
-                        colorScheme="primary"
-                      >
-                        <TagLabel>{skill}</TagLabel>
-                        <TagCloseButton onClick={() => removeSkill(skill)} />
-                      </Tag>
-                    ))}
+                        bg="white"
+                      />
+                      <FormErrorMessage>{errors.customIndustry}</FormErrorMessage>
+                    </FormControl>
+                  )}
+
+                  <FormControl>
+                    <FormLabel fontWeight="semibold">Current School</FormLabel>
+                    <Input
+                      value={currentSchool}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSchool(e.target.value)}
+                      placeholder="e.g., MIT, Stanford University"
+                      size="lg"
+                      bg="white"
+                    />
+                    <FormHelperText fontSize="xs">
+                      Optional - Current or most recent school
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel fontWeight="semibold">Career Status</FormLabel>
+                    <RadioGroup value={careerStatus} onChange={setCareerStatus}>
+                      <Stack spacing={3}>
+                        <Box p={3} borderRadius="lg" bg={careerStatus === 'in_industry' ? 'primary.50' : 'gray.50'} border="2px solid" borderColor={careerStatus === 'in_industry' ? 'primary.300' : 'transparent'}>
+                          <Radio value="in_industry" size="lg" colorScheme="primary">
+                            <VStack align="start" spacing={0}>
+                              <Text fontWeight="medium">Currently in Industry</Text>
+                              <Text fontSize="sm" color="gray.600">Working in my field</Text>
+                            </VStack>
+                          </Radio>
+                        </Box>
+                        <Box p={3} borderRadius="lg" bg={careerStatus === 'seeking_opportunities' ? 'primary.50' : 'gray.50'} border="2px solid" borderColor={careerStatus === 'seeking_opportunities' ? 'primary.300' : 'transparent'}>
+                          <Radio value="seeking_opportunities" size="lg" colorScheme="primary">
+                            <VStack align="start" spacing={0}>
+                              <Text fontWeight="medium">Seeking Opportunities</Text>
+                              <Text fontSize="sm" color="gray.600">Actively looking for positions</Text>
+                            </VStack>
+                          </Radio>
+                        </Box>
+                        <Box p={3} borderRadius="lg" bg={careerStatus === 'student' ? 'primary.50' : 'gray.50'} border="2px solid" borderColor={careerStatus === 'student' ? 'primary.300' : 'transparent'}>
+                          <Radio value="student" size="lg" colorScheme="primary">
+                            <VStack align="start" spacing={0}>
+                              <Text fontWeight="medium">Student</Text>
+                              <Text fontSize="sm" color="gray.600">Currently studying</Text>
+                            </VStack>
+                          </Radio>
+                        </Box>
+                        <Box p={3} borderRadius="lg" bg={careerStatus === 'career_break' ? 'primary.50' : 'gray.50'} border="2px solid" borderColor={careerStatus === 'career_break' ? 'primary.300' : 'transparent'}>
+                          <Radio value="career_break" size="lg" colorScheme="primary">
+                            <VStack align="start" spacing={0}>
+                              <Text fontWeight="medium">Career Break</Text>
+                              <Text fontSize="sm" color="gray.600">Taking time off</Text>
+                            </VStack>
+                          </Radio>
+                        </Box>
+                      </Stack>
+                    </RadioGroup>
+                  </FormControl>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* About Me */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bgGradient="linear(to-b, primary.500, accent.500)" borderRadius="full" />
+                  <Heading size="md" color="gray.800">About Me</Heading>
+                </HStack>
+                <FormControl isInvalid={!!errors.bio}>
+                  <FormLabel fontWeight="semibold">Bio *</FormLabel>
+                  <Textarea
+                    value={bio}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setBio(e.target.value)}
+                    placeholder="Tell us about yourself, your experience, and what you're looking for in this community..."
+                    rows={6}
+                    size="lg"
+                    bg="white"
+                  />
+                  <HStack justify="space-between" mt={2}>
+                    <FormHelperText fontSize="xs" m={0}>
+                      {bio.length} characters (minimum 50)
+                    </FormHelperText>
+                    <Text fontSize="xs" color={bio.length >= 50 ? 'green.500' : 'gray.400'} fontWeight="medium">
+                      {bio.length >= 50 ? '✓ Looks good!' : 'Keep writing...'}
+                    </Text>
                   </HStack>
-                )}
-              </FormControl>
-
-              <Divider />
-
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} w="full">
-                <FormControl>
-                  <FormLabel>LinkedIn URL</FormLabel>
-                  <Input
-                    value={linkedinUrl}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setLinkedinUrl(e.target.value)}
-                    placeholder="https://linkedin.com/in/..."
-                  />
+                  <FormErrorMessage>{errors.bio}</FormErrorMessage>
                 </FormControl>
+              </CardBody>
+            </Card>
 
+            {/* Skills & Interests */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bg="highlight.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Skills & Interests</Heading>
+                </HStack>
                 <FormControl>
-                  <FormLabel>GitHub URL</FormLabel>
-                  <Input
-                    value={githubUrl}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setGithubUrl(e.target.value)}
-                    placeholder="https://github.com/..."
-                  />
+                  <FormLabel fontWeight="semibold">Add Skills</FormLabel>
+                  <HStack>
+                    <Input
+                      value={currentSkill}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSkill(e.target.value)}
+                      placeholder="e.g., Python, Machine Learning, Leadership"
+                      size="lg"
+                      bg="white"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addSkill()
+                        }
+                      }}
+                    />
+                    <Button onClick={addSkill} colorScheme="primary" size="lg">
+                      Add
+                    </Button>
+                  </HStack>
+                  {skills.length > 0 && (
+                    <Box mt={4} p={4} bg="gray.50" borderRadius="lg">
+                      <HStack spacing={2} flexWrap="wrap">
+                        {skills.map((skill) => (
+                          <Tag
+                            key={skill}
+                            size="lg"
+                            borderRadius="full"
+                            variant="solid"
+                            colorScheme="primary"
+                          >
+                            <TagLabel>{skill}</TagLabel>
+                            <TagCloseButton onClick={() => removeSkill(skill)} />
+                          </Tag>
+                        ))}
+                      </HStack>
+                    </Box>
+                  )}
                 </FormControl>
-              </SimpleGrid>
+              </CardBody>
+            </Card>
 
-              <FormControl>
-                <FormLabel>Portfolio / Website</FormLabel>
-                <Input
-                  value={portfolioUrl}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPortfolioUrl(e.target.value)}
-                  placeholder="https://yourwebsite.com"
-                />
-              </FormControl>
+            {/* Social Links */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bg="cyan.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Social Links</Heading>
+                </HStack>
+                <VStack spacing={5}>
+                  <FormControl>
+                    <FormLabel fontWeight="semibold">LinkedIn URL</FormLabel>
+                    <Input
+                      value={linkedinUrl}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setLinkedinUrl(e.target.value)}
+                      placeholder="https://linkedin.com/in/..."
+                      size="lg"
+                      bg="white"
+                    />
+                  </FormControl>
 
-              <Divider />
+                  <FormControl>
+                    <FormLabel fontWeight="semibold">GitHub URL</FormLabel>
+                    <Input
+                      value={githubUrl}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setGithubUrl(e.target.value)}
+                      placeholder="https://github.com/..."
+                      size="lg"
+                      bg="white"
+                    />
+                  </FormControl>
 
-              <FormControl>
-                <FormLabel>
-                  {existingResume ? 'Replace Resume' : 'Upload Resume'}
-                </FormLabel>
+                  <FormControl>
+                    <FormLabel fontWeight="semibold">Portfolio / Website</FormLabel>
+                    <Input
+                      value={portfolioUrl}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setPortfolioUrl(e.target.value)}
+                      placeholder="https://yourwebsite.com"
+                      size="lg"
+                      bg="white"
+                    />
+                  </FormControl>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Resume */}
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={6}>
+                  <Box w={1} h={6} bg="green.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">
+                    {existingResume ? 'Replace Resume' : 'Upload Resume'}
+                  </Heading>
+                </HStack>
                 {existingResume && !resumeFile && (
-                  <Text fontSize="sm" color="text.500" mb={3}>
-                    Current: {existingResume.name}
-                  </Text>
+                  <Box mb={4} p={3} bg="blue.50" borderRadius="lg" borderWidth="1px" borderColor="blue.200">
+                    <Text fontSize="sm" color="blue.700" fontWeight="medium">
+                      Current: {existingResume.name}
+                    </Text>
+                  </Box>
                 )}
                 <ResumeUpload
                   onFileSelect={setResumeFile}
                   currentFile={resumeFile}
                 />
-              </FormControl>
+              </CardBody>
+            </Card>
 
-              <HStack spacing={4} w="full" pt={4}>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  flex={1}
-                  onClick={() => navigate('/profile')}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  colorScheme="primary"
-                  size="lg"
-                  flex={1}
-                  isLoading={saving}
-                  loadingText="Saving..."
-                >
-                  Save Changes
-                </Button>
-              </HStack>
-            </VStack>
-          </form>
-        </Box>
-      </VStack>
-    </Container>
+            {/* Action Buttons */}
+            <Card shadow="md" borderRadius="xl" bg="gray.50">
+              <CardBody p={6}>
+                <HStack spacing={4} justify="flex-end">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => navigate('/profile')}
+                    colorScheme="gray"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    colorScheme="primary"
+                    size="lg"
+                    isLoading={saving}
+                    loadingText="Saving..."
+                    px={12}
+                  >
+                    Save Changes
+                  </Button>
+                </HStack>
+              </CardBody>
+            </Card>
+          </VStack>
+        </form>
+      </Container>
+    </Box>
   )
 }
 

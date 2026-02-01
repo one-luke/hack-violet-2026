@@ -13,17 +13,31 @@ import {
   HStack,
   Avatar,
   Badge,
-  Divider,
   SimpleGrid,
   Link,
   Icon,
   Tag,
+  Card,
+  CardBody,
+  Wrap,
+  WrapItem,
 } from '@chakra-ui/react'
 import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Profile, Insight } from '../types'
 import { InsightsList } from '../components/Insights'
+
+// Helper function to ensure URLs have proper protocol
+const ensureHttps = (url: string | null | undefined): string => {
+  if (!url) return ''
+  const trimmedUrl = url.trim()
+  if (!trimmedUrl) return ''
+  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    return trimmedUrl
+  }
+  return `https://${trimmedUrl}`
+}
 
 const ViewProfile = () => {
   const { user } = useAuth()
@@ -372,275 +386,320 @@ const ViewProfile = () => {
   }
 
   return (
-    <Container maxW="container.lg" py={8}>
-      <VStack spacing={6} align="stretch">
-        <HStack justify="space-between">
-          <HStack>
-            {!isOwnProfile && (
-              <Button
-                leftIcon={<Icon viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                </Icon>}
-                variant="ghost"
-                onClick={() => navigate(-1)}
-              >
-                Back
-              </Button>
-            )}
-            <Heading size="lg">{isOwnProfile ? 'My Profile' : `${profile.full_name}'s Profile`}</Heading>
-          </HStack>
-          <HStack>
-            {!isOwnProfile && (
-              <>
-                <Button
-                  colorScheme="purple"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      const { data: { session } } = await supabase.auth.getSession()
-                      if (!session || !profileIdToFetch) return
+    <Box bg="gray.50" minH="calc(100vh - 64px)">
+      {/* Hero Header Section with Gradient Background */}
+      <Box
+        bgGradient="linear(135deg, primary.600 0%, primary.800 100%)"
+        color="white"
+        py={8}
+        boxShadow="lg"
+      >
+        <Container maxW="container.lg">
+          <VStack spacing={4} align="stretch">
+            <HStack justify="space-between" align="start">
+              <HStack spacing={4}>
+                {!isOwnProfile && (
+                  <Button
+                    leftIcon={<Icon viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </Icon>}
+                    variant="ghost"
+                    color="white"
+                    _hover={{ bg: 'whiteAlpha.200' }}
+                    onClick={() => navigate(-1)}
+                  >
+                    Back
+                  </Button>
+                )}
+                <Avatar
+                  size="xl"
+                  name={profile.full_name}
+                  src={profile.profile_picture_url}
+                  border="4px solid"
+                  borderColor="whiteAlpha.400"
+                  boxShadow="xl"
+                />
+                <VStack align="start" spacing={1}>
+                  <Heading size="xl">{profile.full_name}</Heading>
+                  <HStack spacing={4} color="whiteAlpha.900">
+                    <HStack spacing={1}>
+                      <Text fontSize="lg" fontWeight="bold">{followersCount}</Text>
+                      <Text fontSize="sm">followers</Text>
+                    </HStack>
+                    <Text>•</Text>
+                    <HStack spacing={1}>
+                      <Text fontSize="lg" fontWeight="bold">{followingCount}</Text>
+                      <Text fontSize="sm">following</Text>
+                    </HStack>
+                  </HStack>
+                </VStack>
+              </HStack>
+              <HStack spacing={3}>
+                {!isOwnProfile && (
+                  <>
+                    <Button
+                      bg="whiteAlpha.200"
+                      color="white"
+                      _hover={{ bg: 'whiteAlpha.300' }}
+                      backdropFilter="blur(10px)"
+                      onClick={async () => {
+                        try {
+                          const { data: { session } } = await supabase.auth.getSession()
+                          if (!session || !profileIdToFetch) return
 
-                      const response = await fetch(
-                        `${import.meta.env.VITE_API_URL}/api/messages/conversations/${profileIdToFetch}`,
-                        {
-                          headers: {
-                            'Authorization': `Bearer ${session.access_token}`,
-                          },
+                          const response = await fetch(
+                            `${import.meta.env.VITE_API_URL}/api/messages/conversations/${profileIdToFetch}`,
+                            {
+                              headers: {
+                                'Authorization': `Bearer ${session.access_token}`,
+                              },
+                            }
+                          )
+
+                          if (response.ok) {
+                            const data = await response.json()
+                            navigate(`/messages/${data.conversation.id}`)
+                          }
+                        } catch (error) {
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to start conversation',
+                            status: 'error',
+                            duration: 3000,
+                            isClosable: true,
+                          })
                         }
-                      )
-
-                      if (response.ok) {
-                        const data = await response.json()
-                        navigate(`/messages/${data.conversation.id}`)
+                      }}
+                      leftIcon={
+                        <Icon viewBox="0 0 24 24">
+                          <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                        </Icon>
                       }
-                    } catch (error) {
-                      toast({
-                        title: 'Error',
-                        description: 'Failed to start conversation',
-                        status: 'error',
-                        duration: 3000,
-                        isClosable: true,
-                      })
-                    }
-                  }}
-                  leftIcon={
-                    <Icon viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
-                    </Icon>
-                  }
-                >
-                  Message
-                </Button>
-                <Button
-                  colorScheme={isFollowing ? 'gray' : 'primary'}
-                  onClick={handleFollowToggle}
-                  isLoading={followLoading}
-                  leftIcon={
-                    <Icon viewBox="0 0 24 24">
-                      {isFollowing ? (
-                        <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      ) : (
-                        <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      )}
-                    </Icon>
-                  }
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Button>
-              </>
-            )}
-            {isOwnProfile && (
-              <Button
-                leftIcon={<EditIcon />}
-                colorScheme="primary"
-                onClick={() => navigate('/profile/edit')}
-              >
-                Edit Profile
-              </Button>
-            )}
-          </HStack>
-        </HStack>
-
-        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-          <VStack spacing={6} align="stretch">
-            {/* Header Section */}
-            <HStack spacing={6} align="start">
-              <Avatar
-                size="2xl"
-                name={profile.full_name}
-                src={profile.profile_picture_url}
-                bg="primary.500"
-                color="text.800"
-              />
-              <VStack align="start" flex={1} spacing={2}>
-                <Heading size="lg">{profile.full_name}</Heading>
-                <HStack spacing={4}>
-                  <Text fontSize="sm" color="text.600">
-                    <Text as="span" fontWeight="bold">{followersCount}</Text> followers
-                  </Text>
-                  <Text fontSize="sm" color="text.600">
-                    <Text as="span" fontWeight="bold">{followingCount}</Text> following
-                  </Text>
-                </HStack>
-                <Badge colorScheme="primary" fontSize="md" px={3} py={1} borderRadius="full">
-                  {profile.industry}
-                </Badge>
-                {profile.career_status && (
-                  <Badge colorScheme="info" fontSize="sm" px={3} py={1} borderRadius="full">
-                    {profile.career_status === 'in_industry' && '💼 Currently in Industry'}
-                    {profile.career_status === 'seeking_opportunities' && '🔍 Seeking Opportunities'}
-                    {profile.career_status === 'student' && '🎓 Student'}
-                    {profile.career_status === 'career_break' && '✨ Career Break'}
-                  </Badge>
+                    >
+                      Message
+                    </Button>
+                    <Button
+                      bg={isFollowing ? 'whiteAlpha.200' : 'white'}
+                      color={isFollowing ? 'white' : 'primary.600'}
+                      _hover={{ bg: isFollowing ? 'whiteAlpha.300' : 'gray.100' }}
+                      onClick={handleFollowToggle}
+                      isLoading={followLoading}
+                      fontWeight="bold"
+                      leftIcon={
+                        <Icon viewBox="0 0 24 24">
+                          {isFollowing ? (
+                            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                          ) : (
+                            <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                          )}
+                        </Icon>
+                      }
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </Button>
+                  </>
                 )}
-                {profile.current_school && (
-                  <Text color="text.700" fontSize="md" fontWeight="medium">
-                    🎓 {profile.current_school}
-                  </Text>
+                {isOwnProfile && (
+                  <Button
+                    leftIcon={<EditIcon />}
+                    bg="white"
+                    color="primary.600"
+                    _hover={{ bg: 'gray.100' }}
+                    fontWeight="bold"
+                    onClick={() => navigate('/profile/edit')}
+                  >
+                    Edit Profile
+                  </Button>
                 )}
-                {profile.location && (
-                  <Text color="text.500" fontSize="md">
-                    📍 {profile.location}
-                  </Text>
-                )}
-              </VStack>
+              </HStack>
             </HStack>
 
-            <Divider />
-
-            {/* Bio Section */}
-            <Box>
-              <Heading size="md" mb={3}>About</Heading>
-              <Text color="text.700" whiteSpace="pre-wrap">
-                {profile.bio}
-              </Text>
-            </Box>
-
-            {/* Skills Section */}
-            {profile.skills && profile.skills.length > 0 && (
-              <>
-                <Divider />
-                <Box>
-                  <Heading size="md" mb={3}>Skills & Interests</Heading>
-                  <HStack spacing={2} flexWrap="wrap">
-                    {profile.skills.map((skill) => (
-                      <Tag
-                        key={skill}
-                        size="lg"
-                        borderRadius="full"
-                        variant="solid"
-                        colorScheme="primary"
-                      >
-                        {skill}
-                      </Tag>
-                    ))}
-                  </HStack>
-                </Box>
-              </>
-            )}
-
-            {/* Contact & Links Section */}
-            <Divider />
-            <Box>
-              <Heading size="md" mb={3}>Contact & Links</Heading>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
-                <Box>
-                  <Text fontWeight="semibold" color="text.500" fontSize="sm">Email</Text>
-                  <Text>{profile.email}</Text>
-                </Box>
-                {isOwnProfile && profile.phone && (
-                  <Box>
-                    <Text fontWeight="semibold" color="text.500" fontSize="sm">Phone</Text>
-                    <Text>{profile.phone}</Text>
-                  </Box>
-                )}
-                {profile.linkedin_url && (
-                  <Box>
-                    <Text fontWeight="semibold" color="text.500" fontSize="sm">LinkedIn</Text>
-                    <Link href={profile.linkedin_url} isExternal color="primary.700">
-                      View Profile <Icon as={ExternalLinkIcon} mx="2px" />
-                    </Link>
-                  </Box>
-                )}
-                {profile.github_url && (
-                  <Box>
-                    <Text fontWeight="semibold" color="text.500" fontSize="sm">GitHub</Text>
-                    <Link href={profile.github_url} isExternal color="primary.700">
-                      View Profile <Icon as={ExternalLinkIcon} mx="2px" />
-                    </Link>
-                  </Box>
-                )}
-                {profile.portfolio_url && (
-                  <Box>
-                    <Text fontWeight="semibold" color="text.500" fontSize="sm">Portfolio</Text>
-                    <Link href={profile.portfolio_url} isExternal color="primary.700">
-                      Visit Website <Icon as={ExternalLinkIcon} mx="2px" />
-                    </Link>
-                  </Box>
-                )}
-              </SimpleGrid>
-            </Box>
-
-            {/* Resume Section - Only for own profile */}
-            {isOwnProfile && profile.resume_filepath && (
-              <>
-                <Divider />
-                <Box>
-                  <Heading size="md" mb={3}>Resume</Heading>
-                  <HStack>
-                    <Button
-                      leftIcon={<DownloadIcon />}
-                      colorScheme="primary"
-                      variant="outline"
-                      onClick={downloadResume}
-                    >
-                      Download Resume
-                    </Button>
-                    {profile.resume_uploaded_at && (
-                      <Text fontSize="sm" color="text.500">
-                        Uploaded {new Date(profile.resume_uploaded_at).toLocaleDateString()}
-                      </Text>
-                    )}
-                  </HStack>
-                </Box>
-              </>
-            )}
-          </VStack>
-        </Box>
-
-        {/* Insights Section */}
-        <Box bg="surface.500" p={8} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="border.300">
-          <VStack spacing={4} align="stretch">
-            <HStack justify="space-between" align="center">
-              <Heading size="md">Career Insights</Heading>
-              {isOwnProfile && (
-                <Button
-                  colorScheme="primary"
-                  size="sm"
-                  onClick={() => navigate('/insights/create')}
-                >
-                  Share Insight
-                </Button>
+            {/* Quick Info Pills */}
+            <HStack spacing={3} flexWrap="wrap">
+              <Badge colorScheme="purple" fontSize="md" px={4} py={2} borderRadius="full" bg="whiteAlpha.300" color="white">
+                {profile.industry}
+              </Badge>
+              {profile.career_status && (
+                <Badge fontSize="md" px={4} py={2} borderRadius="full" bg="whiteAlpha.300" color="white">
+                  {profile.career_status === 'in_industry' && '💼 In Industry'}
+                  {profile.career_status === 'seeking_opportunities' && '🔍 Seeking Opportunities'}
+                  {profile.career_status === 'student' && '🎓 Student'}
+                  {profile.career_status === 'career_break' && '✨ Career Break'}
+                </Badge>
+              )}
+              {profile.location && (
+                <Badge fontSize="md" px={4} py={2} borderRadius="full" bg="whiteAlpha.300" color="white">
+                  📍 {profile.location}
+                </Badge>
+              )}
+              {profile.current_school && (
+                <Badge fontSize="md" px={4} py={2} borderRadius="full" bg="whiteAlpha.300" color="white">
+                  🎓 {profile.current_school}
+                </Badge>
               )}
             </HStack>
-
-            {insightsLoading ? (
-              <Center py={8}>
-                <Spinner size="md" color="primary.500" />
-              </Center>
-            ) : (
-              <InsightsList
-                insights={insights}
-                currentUserId={user?.id}
-                onLike={handleLikeInsight}
-                onUnlike={handleUnlikeInsight}
-                onDelete={isOwnProfile ? handleDeleteInsight : undefined}
-              />
-            )}
           </VStack>
-        </Box>
-      </VStack>
-    </Container>
+        </Container>
+      </Box>
+
+      {/* Main Content */}
+      <Container maxW="container.lg" py={8}>
+        <VStack spacing={6} align="stretch">
+          {/* About Card */}
+          <Card shadow="md" borderRadius="xl" overflow="hidden">
+            <CardBody p={6}>
+              <HStack spacing={2} mb={4}>
+                <Box w={1} h={6} bgGradient="linear(to-b, primary.500, accent.500)" borderRadius="full" />
+                <Heading size="md" color="gray.800">About</Heading>
+              </HStack>
+              <Text color="gray.700" fontSize="md" lineHeight="1.8" whiteSpace="pre-wrap">
+                {profile.bio}
+              </Text>
+            </CardBody>
+          </Card>
+
+          {/* Two Column Layout for Skills and Info */}
+          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+            {/* Skills Card */}
+            {profile.skills && profile.skills.length > 0 && (
+              <Card shadow="md" borderRadius="xl" h="fit-content">
+                <CardBody p={6}>
+                  <HStack spacing={2} mb={4}>
+                    <Box w={1} h={6} bg="accent.500" borderRadius="full" />
+                    <Heading size="md" color="gray.800">Skills & Interests</Heading>
+                  </HStack>
+                  <Wrap spacing={2}>
+                    {profile.skills.map((skill) => (
+                      <WrapItem key={skill}>
+                        <Tag
+                          size="lg"
+                          borderRadius="full"
+                          colorScheme="primary"
+                          fontWeight="medium"
+                          px={4}
+                          py={2}
+                        >
+                          {skill}
+                        </Tag>
+                      </WrapItem>
+                    ))}
+                  </Wrap>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Contact & Links Card */}
+            <Card shadow="md" borderRadius="xl" h="fit-content">
+              <CardBody p={6}>
+                <HStack spacing={2} mb={4}>
+                  <Box w={1} h={6} bg="highlight.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Contact & Links</Heading>
+                </HStack>
+                <VStack spacing={4} align="stretch">
+                  <Box p={3} bg="gray.50" borderRadius="lg">
+                    <Text fontSize="xs" fontWeight="semibold" color="gray.500" textTransform="uppercase" mb={1}>Email</Text>
+                    <Text fontWeight="medium" color="gray.800">{profile.email}</Text>
+                  </Box>
+                  {isOwnProfile && profile.phone && (
+                    <Box p={3} bg="gray.50" borderRadius="lg">
+                      <Text fontSize="xs" fontWeight="semibold" color="gray.500" textTransform="uppercase" mb={1}>Phone</Text>
+                      <Text fontWeight="medium" color="gray.800">{profile.phone}</Text>
+                    </Box>
+                  )}
+                  {profile.linkedin_url && (
+                    <Box p={3} bg="blue.50" borderRadius="lg">
+                      <Text fontSize="xs" fontWeight="semibold" color="blue.600" textTransform="uppercase" mb={1}>LinkedIn</Text>
+                      <Link href={ensureHttps(profile.linkedin_url)} isExternal color="blue.600" fontWeight="medium" _hover={{ color: 'blue.700' }}>
+                        View Profile <Icon as={ExternalLinkIcon} mx="2px" />
+                      </Link>
+                    </Box>
+                  )}
+                  {profile.github_url && (
+                    <Box p={3} bg="purple.50" borderRadius="lg">
+                      <Text fontSize="xs" fontWeight="semibold" color="purple.600" textTransform="uppercase" mb={1}>GitHub</Text>
+                      <Link href={ensureHttps(profile.github_url)} isExternal color="purple.600" fontWeight="medium" _hover={{ color: 'purple.700' }}>
+                        View Profile <Icon as={ExternalLinkIcon} mx="2px" />
+                      </Link>
+                    </Box>
+                  )}
+                  {profile.portfolio_url && (
+                    <Box p={3} bg="green.50" borderRadius="lg">
+                      <Text fontSize="xs" fontWeight="semibold" color="green.600" textTransform="uppercase" mb={1}>Portfolio</Text>
+                      <Link href={ensureHttps(profile.portfolio_url)} isExternal color="green.600" fontWeight="medium" _hover={{ color: 'green.700' }}>
+                        Visit Website <Icon as={ExternalLinkIcon} mx="2px" />
+                      </Link>
+                    </Box>
+                  )}
+                </VStack>
+              </CardBody>
+            </Card>
+          </SimpleGrid>
+
+          {/* Resume Card - Only for own profile */}
+          {isOwnProfile && profile.resume_filepath && (
+            <Card shadow="md" borderRadius="xl">
+              <CardBody p={6}>
+                <HStack justify="space-between" align="center">
+                  <HStack spacing={2}>
+                    <Box w={1} h={6} bg="purple.500" borderRadius="full" />
+                    <Box>
+                      <Heading size="md" mb={1} color="gray.800">Resume</Heading>
+                      {profile.resume_uploaded_at && (
+                        <Text fontSize="sm" color="gray.500">
+                          Uploaded {new Date(profile.resume_uploaded_at).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </Box>
+                  </HStack>
+                  <Button
+                    leftIcon={<DownloadIcon />}
+                    colorScheme="primary"
+                    onClick={downloadResume}
+                  >
+                    Download
+                  </Button>
+                </HStack>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Insights Section */}
+          <Card shadow="md" borderRadius="xl">
+            <CardBody p={6}>
+              <HStack justify="space-between" align="center" mb={4}>
+                <HStack spacing={2}>
+                  <Box w={1} h={6} bg="cyan.500" borderRadius="full" />
+                  <Heading size="md" color="gray.800">Career Insights</Heading>
+                </HStack>
+                {isOwnProfile && (
+                  <Button
+                    colorScheme="primary"
+                    size="sm"
+                    onClick={() => navigate('/insights/create')}
+                  >
+                    Share Insight
+                  </Button>
+                )}
+              </HStack>
+
+              {insightsLoading ? (
+                <Center py={8}>
+                  <Spinner size="md" color="primary.500" />
+                </Center>
+              ) : (
+                <InsightsList
+                  insights={insights}
+                  currentUserId={user?.id}
+                  onLike={handleLikeInsight}
+                  onUnlike={handleUnlikeInsight}
+                  onDelete={isOwnProfile ? handleDeleteInsight : undefined}
+                />
+              )}
+            </CardBody>
+          </Card>
+        </VStack>
+      </Container>
+    </Box>
   )
 }
 
