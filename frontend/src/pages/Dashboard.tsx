@@ -43,6 +43,7 @@ interface Profile {
   resume_uploaded_at?: string
   created_at: string
   updated_at: string
+  recommendation_reason?: string
 }
 
 interface Notification {
@@ -503,37 +504,38 @@ const Dashboard = () => {
               <Spinner size="md" color="primary.500" thickness="3px" />
             </Center>
           ) : recommendations.length > 0 ? (
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
               {recommendations.map((rec) => (
                 <Card
                   key={rec.id}
                   cursor="pointer"
-                  transition="all 0.3s"
-                  bg="gray.50"
+                  transition="all 0.3s ease"
+                  bg="white"
+                  borderRadius="2xl"
                   borderWidth="1px"
                   borderColor="gray.100"
-                  borderRadius="xl"
                   overflow="hidden"
+                  shadow="sm"
                   _hover={{
-                    transform: 'translateY(-6px)',
-                    shadow: 'lg',
-                    borderColor: 'primary.300',
-                    bg: 'white'
+                    transform: 'translateY(-4px)',
+                    shadow: 'xl',
+                    borderColor: 'primary.200',
                   }}
                   onClick={() => navigate(`/profile/${rec.id}`)}
                 >
-                  <CardBody p={5}>
-                    <VStack align="stretch" spacing={3}>
-                      <HStack spacing={3} align="start">
+                  <CardBody p={6}>
+                    <VStack align="stretch" spacing={4}>
+                      <HStack spacing={4} align="start">
                         <Avatar
                           name={rec.full_name}
                           src={(rec as any).profile_picture_url}
-                          size="md"
-                          border="2px solid"
-                          borderColor="accent.400"
+                          size="lg"
+                          border="3px solid"
+                          borderColor="primary.100"
+                          shadow="sm"
                         />
                         <Box flex="1" minW="0">
-                          <Heading size="sm" noOfLines={1} fontWeight="semibold">
+                          <Heading size="sm" noOfLines={1} fontWeight="bold" mb={1}>
                             {rec.full_name}
                           </Heading>
                           <Text fontSize="xs" color="gray.500" noOfLines={1}>
@@ -542,56 +544,52 @@ const Dashboard = () => {
                         </Box>
                       </HStack>
 
-                      <VStack align="stretch" spacing={1}>
-                        <Text fontSize="sm" fontWeight="medium" color="text.700">{(rec as any).custom_industry || rec.industry}</Text>
+                      <VStack align="stretch" spacing={2}>
+                        <HStack fontSize="sm" color="gray.700">
+                          <Box color="primary.500" fontSize="lg">
+                            💼
+                          </Box>
+                          <Text fontWeight="medium" noOfLines={1}>
+                            {(rec as any).custom_industry || rec.industry}
+                          </Text>
+                        </HStack>
+                        {rec.location && (
+                          <HStack fontSize="sm" color="gray.700">
+                            <Box color="accent.500" fontSize="lg">
+                              📍
+                            </Box>
+                            <Text noOfLines={1}>{rec.location}</Text>
+                          </HStack>
+                        )}
                         {(rec as any).current_school && (
-                          <Text fontSize="xs" color="gray.600">{(rec as any).current_school}</Text>
+                          <HStack fontSize="sm" color="gray.700">
+                            <Box color="highlight.500" fontSize="lg">
+                              🎓
+                            </Box>
+                            <Text noOfLines={1}>{(rec as any).current_school}</Text>
+                          </HStack>
                         )}
                         {(rec as any).career_status && (
                           <Badge
                             width="fit-content"
-                            colorScheme="cyan"
+                            colorScheme="purple"
                             fontSize="xs"
-                            px={2}
+                            px={3}
                             py={1}
                             borderRadius="full"
+                            fontWeight="semibold"
                           >
                             {(rec as any).career_status.replace('_', ' ')}
                           </Badge>
                         )}
                       </VStack>
 
-                      {rec.skills && rec.skills.length > 0 && (
+                      {rec.recommendation_reason && (
                         <>
                           <Divider borderColor="gray.200" />
-                          <Wrap spacing={2}>
-                            {rec.skills.slice(0, 3).map((skill) => (
-                              <WrapItem key={skill}>
-                                <Tag
-                                  size="sm"
-                                  variant="subtle"
-                                  colorScheme="purple"
-                                  borderRadius="full"
-                                  fontSize="xs"
-                                >
-                                  {skill}
-                                </Tag>
-                              </WrapItem>
-                            ))}
-                            {rec.skills.length > 3 && (
-                              <WrapItem>
-                                <Tag
-                                  size="sm"
-                                  variant="subtle"
-                                  colorScheme="gray"
-                                  borderRadius="full"
-                                  fontSize="xs"
-                                >
-                                  +{rec.skills.length - 3}
-                                </Tag>
-                              </WrapItem>
-                            )}
-                          </Wrap>
+                          <Text fontSize="xs" color="text.600" fontStyle="italic" lineHeight="1.5">
+                            {rec.recommendation_reason}
+                          </Text>
                         </>
                       )}
                     </VStack>

@@ -315,3 +315,148 @@ def recommend_profile_ids(user_profile: dict, candidates: list[dict]) -> list[st
         pass
 
     return [c["id"] for c in sorted(candidates, key=lambda p: _score_profile(user_profile, p), reverse=True)]
+
+
+def recommend_profiles_with_reasons(user_profile: dict, candidates: list[dict], limit: int = 5) -> list[dict]:
+    """Generate profile recommendations with explanations using LLM.
+    
+    Returns list of dicts with 'id' and 'reason' keys.
+    """
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    model = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-20b:free")
+    app_url = os.getenv("OPENROUTER_APP_URL", "")
+    app_name = os.getenv("OPENROUTER_APP_NAME", "Aurelia")
+
+    # Limit candidates to reasonable number for LLM context
+    candidates = candidates[:30]
+    if not candidates:
+        return []
+
+    # Fallback to simple scoring if no API key
+    if not api_key:
+        sorted_candidates = sorted(candidates, key=lambda p: _score_profile(user_profile, p), reverse=True)
+        results = []
+        for c in sorted_candidates[:limit]:
+            # Generate a basic specific reason
+            reasons = []
+            if user_profile.get('current_school') and c.get('current_school'):
+                if user_profile['current_school'].lower() == c['current_school'].lower():
+                    reasons.append(f"You both study at {c['current_school']}")
+            
+            user_ind = (user_profile.get('custom_industry') or user_profile.get('industry') or '').strip()
+            cand_ind = (c.get('custom_industry') or c.get('industry') or '').strip()
+            if user_ind and cand_ind and user_ind.lower() == cand_ind.lower():
+                reasons.append(f"You're both in {cand_ind}")
+            
+            user_skills = set([s.lower() for s in (user_profile.get('skills') or [])])
+            cand_skills = set([s.lower() for s in (c.get('skills') or [])])
+            common_skills = user_skills.intersection(cand_skills)
+            if common_skills:
+                skill_list = list(common_skills)[:2]
+                reasons.append(f"You both have skills in {' and '.join(skill_list)}")
+            
+            reason_text = ". ".join(reasons) if reasons else "Has a compatible professional profile"
+            results.append({
+                "id": c["id"],
+                "reason": reason_text
+            })
+        return results
+
+    user_summary = _prepare_profile_summary(user_profile)
+    candidate_summaries = [_prepare_profile_summary(c) for c in candidates]
+
+    prompt = (
+        f"You are helping match professionals on a networking platform. \n\n"
+        f"Given this user's profile:\n{json.dumps(user_summary, indent=2)}\n\n"
+        f"And these candidate profiles:\n{json.dumps(candidate_summaries, indent=2)}\n\n"
+        f"Select the top {limit} best matches and explain why each is recommended. "
+        f"Be VERY SPECIFIC in your reasons. Mention concrete details like:\n"
+        f"- 'You both study at [School Name]'\n"
+        f"- 'You're both in [Industry]'\n"
+        f"- 'You both have skills in [Skill1] and [Skill2]'\n"
+        f"- 'You're both located in [Location]'\n"
+        f"- 'You're both [career_status]'\n\n"
+        f"DO NOT use generic phrases like 'profile similarity' or 'similar backgrounds'. "
+        f"Always cite specific shared attributes from the profiles.\n\n"
+        f"Return ONLY valid JSON in this exact format:\n"
+        f'{{"recommendations": [{{"id": "profile-id", "reason": "Specific 1-2 sentence explanation with concrete details"}}, ...]}}\n\n'
+        f"Example good reason: 'You both study at Virginia Tech and share skills in Python and Machine Learning.'\n"
+        f"Example bad reason: 'Recommended based on profile similarity.'"
+    )
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "You are a professional networking assistant. Return only valid JSON with no extra text."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.3,
+        "max_tokens": 800,
+    }
+    if os.getenv("OPENROUTER_JSON_MODE", "").strip() == "1":
+        payload["response_format"] = {"type": "json_object"}
+
+    try:
+        data = _post_openrouter(payload, api_key, app_url, app_name)
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+        if not isinstance(content, str):
+            content = json.dumps(content)
+        if not content.strip():
+            raise ValueError("Empty OpenRouter response")
+        
+        parsed = _extract_json(content)
+        recommendations = parsed.get("recommendations", [])
+        
+        if not isinstance(recommendations, list) or not recommendations:
+            raise ValueError("Invalid recommendations format")
+        
+        # Validate and filter recommendations
+        valid_ids = {c["id"] for c in candidates}
+        filtered_recs = []
+        for rec in recommendations:
+            if isinstance(rec, dict) and rec.get("id") in valid_ids and rec.get("reason"):
+                filtered_recs.append({
+                    "id": rec["id"],
+                    "reason": rec["reason"]
+                })
+        
+        if filtered_recs:
+            return filtered_recs[:limit]
+            
+    except Exception as e:
+        print(f"LLM recommendation error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+    # Fallback to simple scoring
+    sorted_candidates = sorted(candidates, key=lambda p: _score_profile(user_profile, p), reverse=True)
+    results = []
+    for c in sorted_candidates[:limit]:
+        # Generate a basic specific reason
+        reasons = []
+        if user_profile.get('current_school') and c.get('current_school'):
+            if user_profile['current_school'].lower() == c['current_school'].lower():
+                reasons.append(f"You both study at {c['current_school']}")
+        
+        user_ind = (user_profile.get('custom_industry') or user_profile.get('industry') or '').strip()
+        cand_ind = (c.get('custom_industry') or c.get('industry') or '').strip()
+        if user_ind and cand_ind and user_ind.lower() == cand_ind.lower():
+            reasons.append(f"You're both in {cand_ind}")
+        
+        user_skills = set([s.lower() for s in (user_profile.get('skills') or [])])
+        cand_skills = set([s.lower() for s in (c.get('skills') or [])])
+        common_skills = user_skills.intersection(cand_skills)
+        if common_skills:
+            skill_list = list(common_skills)[:2]
+            reasons.append(f"You both have skills in {' and '.join(skill_list)}")
+        
+        reason_text = ". ".join(reasons) if reasons else "Has a compatible professional profile"
+        results.append({
+            "id": c["id"],
+            "reason": reason_text
+        })
+    return results

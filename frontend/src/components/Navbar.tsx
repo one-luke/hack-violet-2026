@@ -102,7 +102,7 @@ const Navbar = () => {
                 <SearchIcon color="gray.400" />
               </InputLeftElement>
               <Input
-                placeholder="Search profiles..."
+                placeholder="Search for profiles or insights..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => {

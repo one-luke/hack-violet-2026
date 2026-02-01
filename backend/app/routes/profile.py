@@ -291,7 +291,7 @@ def generate_embeddings():
 @bp.route('/recommendations', methods=['GET'])
 @require_auth
 def get_recommendations():
-    """Recommend profiles based on the current user's profile"""
+    """Recommend profiles based on the current user's profile with AI-generated reasons"""
     try:
         limit = request.args.get('limit', '5')
         try:
@@ -311,6 +311,15 @@ def get_recommendations():
         if not user_resp.data:
             return jsonify({'error': 'Profile not found'}), 404
 
+        # Get list of users the current user is already following
+        follows_resp = (
+            supabase.table('follows')
+            .select('following_id')
+            .eq('follower_id', user_id)
+            .execute()
+        )
+        following_ids = {f['following_id'] for f in (follows_resp.data or [])}
+
         candidates_resp = (
             supabase.table('profiles')
             .select('id,full_name,email,location,industry,custom_industry,current_school,career_status,skills,bio,profile_picture_url')
@@ -318,18 +327,35 @@ def get_recommendations():
             .execute()
         )
         candidates = candidates_resp.data or []
+        
+        # Filter out profiles the user is already following
+        candidates = [c for c in candidates if c['id'] not in following_ids]
+        
         if not candidates:
             return jsonify([]), 200
 
-        ranked_ids = recommend_profile_ids(user_resp.data, candidates)
-        if ranked_ids:
-            candidate_map = {c['id']: c for c in candidates}
-            ordered = [candidate_map[cid] for cid in ranked_ids if cid in candidate_map]
-        else:
-            ordered = candidates
+        # Use LLM to get recommendations with reasons
+        from app.services.openrouter_nlp import recommend_profiles_with_reasons
+        recommendations_with_reasons = recommend_profiles_with_reasons(
+            user_resp.data, 
+            candidates, 
+            limit
+        )
+        
+        # Map recommendations back to full profile data
+        candidate_map = {c['id']: c for c in candidates}
+        result = []
+        for rec in recommendations_with_reasons:
+            profile_id = rec['id']
+            if profile_id in candidate_map:
+                profile_data = candidate_map[profile_id]
+                profile_data['recommendation_reason'] = rec['reason']
+                result.append(profile_data)
 
-        return jsonify(ordered[:limit]), 200
+        return jsonify(result), 200
     except Exception as e:
+        print(f"Recommendation error: {str(e)}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/<user_id>', methods=['GET'])

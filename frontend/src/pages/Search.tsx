@@ -608,41 +608,6 @@ export default function Search() {
                             {profile.bio}
                           </Text>
                         )}
-
-                        {profile.skills && profile.skills.length > 0 && (
-                          <>
-                            <Divider borderColor="gray.200" />
-                            <Wrap spacing={2}>
-                              {profile.skills.slice(0, 4).map((skill) => (
-                                <WrapItem key={skill}>
-                                  <Tag
-                                    size="sm"
-                                    variant="subtle"
-                                    colorScheme="purple"
-                                    borderRadius="full"
-                                    fontSize="xs"
-                                    fontWeight="medium"
-                                  >
-                                    {skill}
-                                  </Tag>
-                                </WrapItem>
-                              ))}
-                              {profile.skills.length > 4 && (
-                                <WrapItem>
-                                  <Tag
-                                    size="sm"
-                                    variant="subtle"
-                                    colorScheme="gray"
-                                    borderRadius="full"
-                                    fontSize="xs"
-                                  >
-                                    +{profile.skills.length - 4}
-                                  </Tag>
-                                </WrapItem>
-                              )}
-                            </Wrap>
-                          </>
-                        )}
                       </VStack>
                     </CardBody>
                   </Card>
