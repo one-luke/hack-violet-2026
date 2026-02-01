@@ -11,7 +11,6 @@ import {
   Avatar,
   Spinner,
   Flex,
-  Badge,
   useToast,
   Center,
 } from '@chakra-ui/react'

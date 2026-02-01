@@ -8,9 +8,6 @@ import {
   Avatar,
   Text,
   Badge,
-  Wrap,
-  WrapItem,
-  Tag,
   Button,
   Box,
 } from '@chakra-ui/react'
