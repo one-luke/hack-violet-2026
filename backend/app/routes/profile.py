@@ -1,6 +1,8 @@
+import traceback
 from flask import Blueprint, request, jsonify
 from app.middleware.auth import require_auth
 from app.supabase_client import supabase
+from app.services.openrouter_nlp import parse_search_query
 
 bp = Blueprint('profile', __name__)
 
@@ -95,7 +97,8 @@ def search_profiles():
         
         # Apply exact match filters
         if industry:
-            query = query.eq('industry', industry)
+            # Case-insensitive match for industry names
+            query = query.ilike('industry', industry)
         
         if location:
             query = query.ilike('location', f'%{location}%')
@@ -128,6 +131,33 @@ def search_profiles():
         return jsonify(profiles), 200
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/search/parse', methods=['POST'])
+@require_auth
+def parse_search():
+    """Parse a natural language query into structured filters"""
+    try:
+        data = request.json or {}
+        query = (data.get('query') or '').strip()
+        if not query:
+            return jsonify({'error': 'Query is required'}), 400
+
+        parsed = parse_search_query(query)
+        # Normalize missing fields
+        result = {
+            'text_query': parsed.get('text_query', '') or '',
+            'industry': parsed.get('industry', '') or '',
+            'location': parsed.get('location', '') or '',
+            'school': parsed.get('school', '') or '',
+            'career_status': parsed.get('career_status', '') or '',
+            'skills': parsed.get('skills', []) or [],
+        }
+
+        return jsonify({'filters': result}), 200
+    except Exception as e:
+        print("OpenRouter parse error:", str(e))
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/<user_id>', methods=['GET'])

@@ -3,6 +3,10 @@ import {
   Flex,
   HStack,
   Button,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Image,
   Menu,
   MenuButton,
   MenuList,
@@ -13,15 +17,18 @@ import {
   Text,
   Container,
 } from '@chakra-ui/react'
-import { ChevronDownIcon } from '@chakra-ui/icons'
+import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import logo from './logo.png'
+import { useState } from 'react'
 
 const Navbar = () => {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const bg = useColorModeValue('surface.500', 'gray.800')
   const borderColor = useColorModeValue('border.300', 'gray.700')
+  const [searchInput, setSearchInput] = useState('')
 
   const handleSignOut = async () => {
     await signOut()
@@ -33,39 +40,47 @@ const Navbar = () => {
       <Container maxW="container.xl">
         <Flex h={16} alignItems="center" justifyContent="space-between">
           <HStack spacing={8} alignItems="center">
-            <Text
-              fontSize="xl"
-              fontWeight="bold"
-              bgGradient="linear(to-r, primary.500, primary.700)"
-              bgClip="text"
-              cursor="pointer"
-              onClick={() => navigate('/dashboard')}
-            >
-              Aurelia
-            </Text>
-            <HStack spacing={4}>
-              <Button
-                variant="ghost"
+            <HStack spacing={3}>
+              <Box
+                w="36px"
+                h="36px"
+                borderRadius="md"
+                cursor="pointer"
                 onClick={() => navigate('/dashboard')}
-                _hover={{ bg: 'secondary.200' }}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                overflow="hidden"
               >
-                Dashboard
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/search')}
-                _hover={{ bg: 'secondary.200' }}
+                <Image src={logo} alt="Aurelia logo" w="100%" h="100%" objectFit="cover" />
+              </Box>
+              <Text
+                fontSize="xl"
+                fontWeight="bold"
+                bgGradient="linear(to-r, primary.500, primary.700)"
+                bgClip="text"
+                cursor="pointer"
+                onClick={() => navigate('/dashboard')}
               >
-                Search
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/messages')}
-                _hover={{ bg: 'secondary.200' }}
-              >
-                Messages
-              </Button>
+                Aurelia
+              </Text>
             </HStack>
+            <InputGroup  w={{ md: '300px', lg: '420px', xl: '480px' }} display={{ base: 'none', md: 'block' }}>
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.400" />
+              </InputLeftElement>
+              <Input
+                placeholder="Search profiles..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    navigate(`/search?q=${encodeURIComponent(searchInput.trim())}`)
+                  }
+                }}
+              />
+            </InputGroup>
           </HStack>
 
           <Flex alignItems="center">
