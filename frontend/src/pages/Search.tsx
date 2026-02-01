@@ -30,6 +30,7 @@ import {
   CardBody,
   Badge,
   Flex,
+  Progress,
 } from '@chakra-ui/react'
 import { SearchIcon } from '@chakra-ui/icons'
 import { supabase } from '../lib/supabase'
@@ -72,6 +73,7 @@ export default function Search() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [hasSearched, setHasSearched] = useState(false)
+  const [loadingStage, setLoadingStage] = useState<'parsing' | 'searching' | null>(null)
 
   const parseNaturalLanguage = async (query: string, token: string) => {
     const response = await fetch(
@@ -116,7 +118,6 @@ export default function Search() {
   }, [location.search])
 
   const handleSearch = async (override?: { query?: string }) => {
-    setLoading(true)
     setError('')
     setHasSearched(true)
 
@@ -127,13 +128,6 @@ export default function Search() {
         return
       }
 
-      const hasExplicitFilters =
-        Boolean(selectedIndustry) ||
-        Boolean(selectedLocation) ||
-        Boolean(selectedSchool) ||
-        Boolean(selectedCareerStatus) ||
-        selectedSkills.length > 0
-
       let effectiveQuery = override?.query ?? searchQuery
       let effectiveIndustry = selectedIndustry
       let effectiveLocation = selectedLocation
@@ -141,9 +135,28 @@ export default function Search() {
       let effectiveCareerStatus = selectedCareerStatus
       let effectiveSkills = selectedSkills
 
-      if (effectiveQuery && !hasExplicitFilters) {
+      // Handle NLP parsing first (show loading immediately)
+      if (effectiveQuery) {
+        // Show loading and parsing stage immediately
+        setLoadingStage('parsing')
+        setLoading(true)
+        
+        // Reset all filters before applying parsed ones
+        effectiveIndustry = ''
+        effectiveLocation = ''
+        effectiveSchool = ''
+        effectiveCareerStatus = ''
+        effectiveSkills = []
+        
+        setSelectedIndustry('')
+        setSelectedLocation('')
+        setSelectedSchool('')
+        setSelectedCareerStatus('')
+        setSelectedSkills([])
+        
         try {
           const parsed = await parseNaturalLanguage(effectiveQuery, session.access_token)
+          
           effectiveQuery = parsed.text_query || ''
           effectiveIndustry = parsed.industry || ''
           effectiveLocation = parsed.location || ''
@@ -157,15 +170,16 @@ export default function Search() {
           setSelectedCareerStatus(effectiveCareerStatus)
           setSelectedSkills(effectiveSkills)
         } catch (parseErr) {
-          toast({
-            title: 'Unable to parse search text',
-            description: parseErr instanceof Error ? parseErr.message : 'An error occurred',
-            status: 'warning',
-            duration: 4000,
-            isClosable: true,
-          })
+          // Continue with original query if parsing fails
+          console.warn('Unable to parse search text:', parseErr)
         }
+      } else {
+        // For explicit filter searches, show loading immediately too
+        setLoading(true)
       }
+      
+      // Now show the searching UI with skeleton loaders
+      setLoadingStage('searching')
 
       const params = new URLSearchParams()
       if (effectiveQuery) params.append('q', effectiveQuery)
@@ -209,6 +223,7 @@ export default function Search() {
       })
     } finally {
       setLoading(false)
+      setLoadingStage(null)
     }
   }
 
@@ -371,13 +386,22 @@ export default function Search() {
                       colorScheme="primary"
                       onClick={() => handleSearch()}
                       isLoading={loading}
-                      leftIcon={<SearchIcon />}
+                      loadingText={
+                        loadingStage === 'parsing' 
+                          ? 'Parsing...' 
+                          : loadingStage === 'searching' 
+                          ? 'Searching...'
+                          : 'Loading...'
+                      }
+                      leftIcon={!loading ? <SearchIcon /> : undefined}
+                      w="full"
                     >
-                      Apply
+                      Search
                     </Button>
                     <Button
                       variant="outline"
                       onClick={handleClearFilters}
+                      isDisabled={loading}
                     >
                       Clear
                     </Button>
@@ -396,14 +420,24 @@ export default function Search() {
             )}
 
             <Heading size="md" mb={4}>
-              {hasSearched
+              {hasSearched && !loadingStage
                 ? `${profiles.length} ${profiles.length === 1 ? 'Profile' : 'Profiles'} Found`
-                : 'Results will appear here'}
+                : ''}
             </Heading>
 
             {loading ? (
-              <Center py={12}>
-                <Spinner size="xl" color="primary.500" thickness="4px" />
+              <Center py={20}>
+                <VStack spacing={4}>
+                  <Spinner size="xl" color="primary.500" thickness="4px" speed="0.8s" />
+                  <VStack spacing={1}>
+                    <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+                      Searching...
+                    </Text>
+                    <Text fontSize="sm" color="gray.500">
+                      Looking for profiles
+                    </Text>
+                  </VStack>
+                </VStack>
               </Center>
             ) : (
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
