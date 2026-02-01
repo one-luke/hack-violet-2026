@@ -46,10 +46,10 @@ def create_app():
     
     app.register_blueprint(profile.bp)
     app.register_blueprint(auth.bp)
-    app.register_blueprint(follows_bp, url_prefix='/api/follows')
-    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
-    app.register_blueprint(messages_bp, url_prefix='/api/messages')
-    app.register_blueprint(insights_bp, url_prefix='/api')
+    app.register_blueprint(follows_bp, url_prefix='/follows')
+    app.register_blueprint(notifications_bp, url_prefix='/notifications')
+    app.register_blueprint(messages_bp, url_prefix='/messages')
+    app.register_blueprint(insights_bp, url_prefix='')
     
     @app.route('/health')
     def health():
