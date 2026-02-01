@@ -89,7 +89,7 @@ const ViewProfile = () => {
         if (!session) throw new Error('Not authenticated')
 
         const response = await fetch(
-          `http://localhost:5001/api/profile/${profileIdToFetch}`,
+          `${import.meta.env.VITE_API_URL}/api/profile/${profileIdToFetch}`,
           {
             headers: {
               Authorization: `Bearer ${session.access_token}`,
