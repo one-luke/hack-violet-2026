@@ -30,7 +30,6 @@ import {
   CardBody,
   Badge,
   Flex,
-  Progress,
 } from '@chakra-ui/react'
 import { SearchIcon } from '@chakra-ui/icons'
 import { supabase } from '../lib/supabase'
