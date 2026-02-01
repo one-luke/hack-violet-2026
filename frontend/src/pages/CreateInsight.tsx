@@ -16,9 +16,7 @@ import {
   useToast,
   Card,
   CardBody,
-  Icon,
 } from '@chakra-ui/react'
-import { ArrowBackIcon } from '@chakra-ui/icons'
 import { supabase } from '../lib/supabase'
 
 export default function CreateInsight() {

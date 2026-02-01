@@ -7,8 +7,6 @@ import {
   Text,
   Button,
   Box,
-  Center,
-  Spinner,
   useToast,
   HStack,
   Avatar,
@@ -21,12 +19,15 @@ import {
   CardBody,
   Wrap,
   WrapItem,
+  Center,
+  Spinner,
 } from '@chakra-ui/react'
 import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Profile, Insight } from '../types'
 import { InsightsList } from '../components/Insights'
+import { LoadingSpinner } from '../components/common'
 
 // Helper function to ensure URLs have proper protocol
 const ensureHttps = (url: string | null | undefined): string => {
@@ -363,11 +364,7 @@ const ViewProfile = () => {
   }
 
   if (loading) {
-    return (
-      <Center h="calc(100vh - 64px)">
-        <Spinner size="xl" color="primary.500" thickness="4px" />
-      </Center>
-    )
+    return <LoadingSpinner message="Loading profile..." />
   }
 
   if (!profile) {

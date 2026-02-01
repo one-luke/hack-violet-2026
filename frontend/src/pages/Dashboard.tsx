@@ -7,24 +7,18 @@ import {
   Text,
   Button,
   Box,
-  Center,
-  Spinner,
   useToast,
   HStack,
   Avatar,
   Divider,
   SimpleGrid,
-  Card,
-  CardBody,
-  Wrap,
-  WrapItem,
-  Tag,
-  Badge,
+  Center,
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Insight } from '../types'
 import { InsightsList } from '../components/Insights'
+import { LoadingSpinner, ProfileCard } from '../components/common'
 
 interface Profile {
   id: string
@@ -285,11 +279,7 @@ const Dashboard = () => {
   }
 
   if (loading) {
-    return (
-      <Center h="calc(100vh - 64px)">
-        <Spinner size="xl" color="primary.500" thickness="4px" />
-      </Center>
-    )
+    return <LoadingSpinner message="Loading your dashboard..." />
   }
 
   if (!profile) {
@@ -442,9 +432,7 @@ const Dashboard = () => {
             </HStack>
           </HStack>
           {insightsLoading ? (
-            <Center py={8}>
-              <Spinner size="md" color="primary.500" thickness="3px" />
-            </Center>
+            <LoadingSpinner message="Loading insights..." size="md" height="200px" />
           ) : insights.length > 0 ? (
             <InsightsList
               insights={insights}
@@ -500,101 +488,11 @@ const Dashboard = () => {
           </HStack>
 
           {recommendationsLoading ? (
-            <Center py={8}>
-              <Spinner size="md" color="primary.500" thickness="3px" />
-            </Center>
+            <LoadingSpinner message="Loading recommendations..." size="md" height="200px" />
           ) : recommendations.length > 0 ? (
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
               {recommendations.map((rec) => (
-                <Card
-                  key={rec.id}
-                  cursor="pointer"
-                  transition="all 0.3s ease"
-                  bg="white"
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor="gray.100"
-                  overflow="hidden"
-                  shadow="sm"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'xl',
-                    borderColor: 'primary.200',
-                  }}
-                  onClick={() => navigate(`/profile/${rec.id}`)}
-                >
-                  <CardBody p={6}>
-                    <VStack align="stretch" spacing={4}>
-                      <HStack spacing={4} align="start">
-                        <Avatar
-                          name={rec.full_name}
-                          src={(rec as any).profile_picture_url}
-                          size="lg"
-                          border="3px solid"
-                          borderColor="primary.100"
-                          shadow="sm"
-                        />
-                        <Box flex="1" minW="0">
-                          <Heading size="sm" noOfLines={1} fontWeight="bold" mb={1}>
-                            {rec.full_name}
-                          </Heading>
-                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
-                            {rec.email}
-                          </Text>
-                        </Box>
-                      </HStack>
-
-                      <VStack align="stretch" spacing={2}>
-                        <HStack fontSize="sm" color="gray.700">
-                          <Box color="primary.500" fontSize="lg">
-                            💼
-                          </Box>
-                          <Text fontWeight="medium" noOfLines={1}>
-                            {(rec as any).custom_industry || rec.industry}
-                          </Text>
-                        </HStack>
-                        {rec.location && (
-                          <HStack fontSize="sm" color="gray.700">
-                            <Box color="accent.500" fontSize="lg">
-                              📍
-                            </Box>
-                            <Text noOfLines={1}>{rec.location}</Text>
-                          </HStack>
-                        )}
-                        {(rec as any).current_school && (
-                          <HStack fontSize="sm" color="gray.700">
-                            <Box color="highlight.500" fontSize="lg">
-                              🎓
-                            </Box>
-                            <Text noOfLines={1}>{(rec as any).current_school}</Text>
-                          </HStack>
-                        )}
-                        {(rec as any).career_status && (
-                          <Badge
-                            width="fit-content"
-                            colorScheme="purple"
-                            fontSize="xs"
-                            px={3}
-                            py={1}
-                            borderRadius="full"
-                            fontWeight="semibold"
-                          >
-                            {(rec as any).career_status.replace('_', ' ')}
-                          </Badge>
-                        )}
-                      </VStack>
-
-                      {rec.recommendation_reason && (
-                        <>
-                          <Divider borderColor="gray.200" />
-                          <Text fontSize="xs" color="text.600" fontStyle="italic" lineHeight="1.5">
-                            {rec.recommendation_reason}
-                          </Text>
-                        </>
-                      )}
-                    </VStack>
-                  </CardBody>
-                </Card>
+                <ProfileCard key={rec.id} profile={rec} showActions={true} />
               ))}
             </SimpleGrid>
           ) : (

@@ -6,17 +6,10 @@ import {
   Container,
   FormControl,
   FormLabel,
-  Input,
-  Textarea,
   VStack,
   Heading,
   Text,
   useToast,
-  FormErrorMessage,
-  Select,
-  Tag,
-  TagLabel,
-  TagCloseButton,
   HStack,
   Step,
   StepDescription,
@@ -29,18 +22,25 @@ import {
   Stepper,
   useSteps,
   Avatar,
-  FormHelperText,
-  Radio,
-  RadioGroup,
-  Stack,
   Card,
   CardBody,
+  RadioGroup,
+  Stack,
+  Radio,
+  Input,
+  Textarea,
+  FormHelperText,
+  FormErrorMessage,
+  Tag,
+  TagLabel,
+  TagCloseButton,
   Icon,
 } from '@chakra-ui/react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import ResumeUpload from '../components/ResumeUpload'
 import { FormErrors } from '../types'
+import { InputField, SelectField } from '../components/common'
 
 const STEM_FIELDS = [
   'Software Engineering',
@@ -380,44 +380,33 @@ const CreateProfile = () => {
                     </VStack>
                   </FormControl>
 
-                  <FormControl isInvalid={!!errors.fullName}>
-                    <FormLabel fontWeight="semibold">Full Name *</FormLabel>
-                    <Input
-                      value={fullName}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-                      placeholder="Jane Doe"
-                      size="lg"
-                      bg="white"
-                    />
-                    <FormErrorMessage>{errors.fullName}</FormErrorMessage>
-                  </FormControl>
+                  <InputField
+                    label="Full Name"
+                    value={fullName}
+                    onChange={setFullName}
+                    error={errors.fullName}
+                    placeholder="Jane Doe"
+                    isRequired
+                  />
 
-                  <FormControl isInvalid={!!errors.phone}>
-                    <FormLabel fontWeight="semibold">Phone Number</FormLabel>
-                    <Input
-                      value={phone}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 123-4567"
-                      size="lg"
-                      bg="white"
-                    />
-                    <FormHelperText fontSize="xs">
-                      Optional - Format: +1 234-567-8900 or (234) 567-8900
-                    </FormHelperText>
-                    <FormErrorMessage>{errors.phone}</FormErrorMessage>
-                  </FormControl>
+                  <InputField
+                    label="Phone Number"
+                    value={phone}
+                    onChange={setPhone}
+                    error={errors.phone}
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    helperText="Optional - Format: +1 234-567-8900 or (234) 567-8900"
+                  />
 
-                  <FormControl isInvalid={!!errors.location}>
-                    <FormLabel fontWeight="semibold">Location *</FormLabel>
-                    <Input
-                      value={location}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
-                      placeholder="San Francisco, CA"
-                      size="lg"
-                      bg="white"
-                    />
-                    <FormErrorMessage>{errors.location}</FormErrorMessage>
-                  </FormControl>
+                  <InputField
+                    label="Location"
+                    value={location}
+                    onChange={setLocation}
+                    error={errors.location}
+                    placeholder="San Francisco, CA"
+                    isRequired
+                  />
                 </VStack>
               )}
 
@@ -428,51 +417,34 @@ const CreateProfile = () => {
                     <Heading size="md" color="gray.800">Professional Details</Heading>
                   </HStack>
                   
-                  <FormControl isInvalid={!!errors.industry}>
-                    <FormLabel fontWeight="semibold">Industry / Field *</FormLabel>
-                    <Select
-                      value={industry}
-                      onChange={(e: ChangeEvent<HTMLSelectElement>) => setIndustry(e.target.value)}
-                      placeholder="Select your field"
-                      size="lg"
-                      bg="white"
-                    >
-                      {STEM_FIELDS.map((field) => (
-                        <option key={field} value={field}>
-                          {field}
-                        </option>
-                      ))}
-                    </Select>
-                    <FormErrorMessage>{errors.industry}</FormErrorMessage>
-                  </FormControl>
+                  <SelectField
+                    label="Industry / Field"
+                    value={industry}
+                    onChange={setIndustry}
+                    error={errors.industry}
+                    placeholder="Select your field"
+                    options={STEM_FIELDS.map(field => ({ value: field, label: field }))}
+                    isRequired
+                  />
 
                   {industry === 'Other' && (
-                    <FormControl isInvalid={!!errors.customIndustry}>
-                      <FormLabel fontWeight="semibold">Specify Your Industry *</FormLabel>
-                      <Input
-                        value={customIndustry}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomIndustry(e.target.value)}
-                        placeholder="e.g., Environmental Science, Biomedical Engineering"
-                        size="lg"
-                        bg="white"
-                      />
-                      <FormErrorMessage>{errors.customIndustry}</FormErrorMessage>
-                    </FormControl>
+                    <InputField
+                      label="Specify Your Industry"
+                      value={customIndustry}
+                      onChange={setCustomIndustry}
+                      error={errors.customIndustry}
+                      placeholder="e.g., Environmental Science, Biomedical Engineering"
+                      isRequired
+                    />
                   )}
 
-                  <FormControl>
-                    <FormLabel fontWeight="semibold">Current School</FormLabel>
-                    <Input
-                      value={currentSchool}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentSchool(e.target.value)}
-                      placeholder="e.g., MIT, Stanford University"
-                      size="lg"
-                      bg="white"
-                    />
-                    <FormHelperText fontSize="xs">
-                      Optional - Current or most recent school
-                    </FormHelperText>
-                  </FormControl>
+                  <InputField
+                    label="Current School"
+                    value={currentSchool}
+                    onChange={setCurrentSchool}
+                    placeholder="e.g., MIT, Stanford University"
+                    helperText="Optional - Current or most recent school"
+                  />
 
                   <FormControl isInvalid={!!errors.careerStatus}>
                     <FormLabel fontWeight="semibold">Career Status *</FormLabel>

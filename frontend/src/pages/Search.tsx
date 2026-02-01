@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import {
   Box,
   Container,
@@ -10,26 +10,11 @@ import {
   HStack,
   Heading,
   Text,
-  Tag,
-  Select,
-  FormControl,
-  FormLabel,
-  Avatar,
-  Divider,
   Alert,
   AlertIcon,
-  Spinner,
-  Center,
   useToast,
   InputGroup,
   InputLeftElement,
-  InputRightElement,
-  Icon,
-  Wrap,
-  WrapItem,
-  Card,
-  CardBody,
-  Badge,
   Flex,
   ButtonGroup,
 } from '@chakra-ui/react'
@@ -37,31 +22,9 @@ import { SearchIcon } from '@chakra-ui/icons'
 import { supabase } from '../lib/supabase'
 import { Profile, Insight } from '../types'
 import { InsightCard } from '../components/Insights'
-
-const INDUSTRIES = [
-  'Software Engineering',
-  'Data Science',
-  'Manufacturing',
-  'Mechanical Engineering',
-  'Electrical Engineering',
-  'Chemical Engineering',
-  'Biotechnology',
-  'Robotics',
-  'Aerospace',
-  'Research & Development',
-  'Quality Assurance',
-  'Other',
-]
-
-const CAREER_STATUSES = [
-  { value: 'in_industry', label: 'Currently in Industry' },
-  { value: 'seeking_opportunities', label: 'Seeking Opportunities' },
-  { value: 'student', label: 'Student' },
-  { value: 'career_break', label: 'Career Break' },
-]
+import { LoadingSpinner, EmptyState, ProfileCard } from '../components/common'
 
 export default function Search() {
-  const navigate = useNavigate()
   const location = useLocation()
   const toast = useToast()
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,7 +34,6 @@ export default function Search() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [hasSearched, setHasSearched] = useState(true)
-  const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false)
 
   useEffect(() => {
     handleSearch()
@@ -184,69 +146,11 @@ export default function Search() {
     setLoading(true)
   }
 
-  const handleGenerateEmbeddings = async () => {
-    setGeneratingEmbeddings(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        toast({
-          title: 'Authentication required',
-          description: 'Please sign in to generate embeddings',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        })
-        return
-      }
-
-      const apiBase = import.meta.env.VITE_API_URL || ''
-      const endpoint = searchType === 'profiles' 
-        ? `${apiBase}/api/profile/embeddings/generate`
-        : `${apiBase}/api/insights/embeddings/generate`
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate embeddings')
-      }
-
-      const data = await response.json()
-      
-      toast({
-        title: 'Embeddings generated',
-        description: `Updated ${data.updated} ${searchType}, ${data.failed} failed out of ${data.total} total`,
-        status: 'success',
-        duration: 7000,
-        isClosable: true,
-      })
-    } catch (err) {
-      toast({
-        title: 'Error generating embeddings',
-        description: err instanceof Error ? err.message : 'An error occurred',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      })
-    } finally {
-      setGeneratingEmbeddings(false)
-    }
-  }
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       handleSearch()
     }
-  }
-
-  const getCareerStatusLabel = (status?: string) => {
-    const found = CAREER_STATUSES.find(s => s.value === status)
-    return found ? found.label : status
   }
 
   const handleLikeInsight = async (insightId: string) => {
@@ -497,120 +401,11 @@ export default function Search() {
             )}
 
             {loading ? (
-              <Center py={20}>
-                <VStack spacing={4}>
-                  <Spinner size="xl" color="primary.500" thickness="4px" speed="0.8s" />
-                  <VStack spacing={1}>
-                    <Text fontSize="lg" fontWeight="semibold" color="gray.700">
-                      Searching...
-                    </Text>
-                    <Text fontSize="sm" color="gray.500">
-                      Looking for {searchType}
-                    </Text>
-                  </VStack>
-                </VStack>
-              </Center>
+              <LoadingSpinner message={`Searching ${searchType}...`} height="50vh" />
             ) : searchType === 'profiles' ? (
               <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                 {profiles.map((profile) => (
-                  <Card
-                    key={profile.id}
-                    cursor="pointer"
-                    transition="all 0.3s ease"
-                    bg="white"
-                    borderRadius="2xl"
-                    borderWidth="1px"
-                    borderColor="gray.100"
-                    overflow="hidden"
-                    shadow="sm"
-                    _hover={{
-                      transform: 'translateY(-4px)',
-                      shadow: 'xl',
-                      borderColor: 'primary.200',
-                    }}
-                    onClick={() => navigate(`/profile/${profile.id}`)}
-                  >
-                    <CardBody p={6}>
-                      <VStack align="stretch" spacing={4}>
-                        <HStack spacing={4} align="start">
-                          <Avatar
-                            name={profile.full_name}
-                            src={profile.profile_picture_url}
-                            size="lg"
-                            border="3px solid"
-                            borderColor="primary.100"
-                            shadow="sm"
-                          />
-                          <Box flex="1" minW="0">
-                            <Heading size="sm" noOfLines={1} fontWeight="bold" mb={1}>
-                              {profile.full_name}
-                            </Heading>
-                            <Text fontSize="xs" color="gray.500" noOfLines={1}>
-                              {profile.email}
-                            </Text>
-                          </Box>
-                        </HStack>
-
-                        <VStack align="stretch" spacing={2}>
-                          <HStack fontSize="sm" color="gray.700">
-                            <Icon viewBox="0 0 24 24" color="primary.500" boxSize={4}>
-                              <path
-                                fill="currentColor"
-                                d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"
-                              />
-                            </Icon>
-                            <Text fontWeight="medium" noOfLines={1}>{profile.custom_industry || profile.industry}</Text>
-                          </HStack>
-                          {profile.location && (
-                            <HStack fontSize="sm" color="gray.700">
-                              <Icon viewBox="0 0 24 24" color="accent.500" boxSize={4}>
-                                <path
-                                  fill="currentColor"
-                                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
-                                />
-                              </Icon>
-                              <Text noOfLines={1}>{profile.location}</Text>
-                            </HStack>
-                          )}
-                          {profile.current_school && (
-                            <HStack fontSize="sm" color="gray.700">
-                              <Icon viewBox="0 0 24 24" color="highlight.500" boxSize={4}>
-                                <path
-                                  fill="currentColor"
-                                  d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"
-                                />
-                              </Icon>
-                              <Text noOfLines={1}>{profile.current_school}</Text>
-                            </HStack>
-                          )}
-                          {profile.career_status && (
-                            <Badge
-                              width="fit-content"
-                              colorScheme="purple"
-                              fontSize="xs"
-                              px={3}
-                              py={1}
-                              borderRadius="full"
-                              fontWeight="semibold"
-                            >
-                              {getCareerStatusLabel(profile.career_status)}
-                            </Badge>
-                          )}
-                        </VStack>
-
-                        {profile.bio && (
-                          <Text
-                            fontSize="sm"
-                            color="gray.600"
-                            noOfLines={3}
-                            lineHeight="tall"
-                          >
-                            {profile.bio}
-                          </Text>
-                        )}
-                      </VStack>
-                    </CardBody>
-                  </Card>
+                  <ProfileCard key={profile.id} profile={profile} showActions={true} />
                 ))}
               </SimpleGrid>
             ) : (
@@ -628,36 +423,20 @@ export default function Search() {
             )}
 
             {hasSearched && ((searchType === 'profiles' && profiles.length === 0) || (searchType === 'insights' && insights.length === 0)) && !loading && (
-              <Center py={20}>
-                <VStack spacing={4}>
-                  <Box
-                    p={6}
-                    borderRadius="full"
-                    bg="gray.100"
-                  >
-                    <SearchIcon boxSize={12} color="gray.400" />
-                  </Box>
-                  <Heading size="md" color="gray.600" fontWeight="semibold">
-                    No {searchType} found
-                  </Heading>
-                  <Text color="gray.500" textAlign="center" maxW="md">
-                    {searchQuery 
-                      ? `We couldn't find any ${searchType} matching "${searchQuery}". Try adjusting your search terms or try a different query.`
-                      : `No ${searchType} available yet. ${searchType === 'profiles' ? 'Be the first to create a profile!' : 'Check back later for new insights.'}`
-                    }
-                  </Text>
-                  {searchQuery && (
-                    <Button
-                      onClick={handleClearFilters}
-                      colorScheme="primary"
-                      variant="ghost"
-                      mt={2}
-                    >
-                      Clear search and view all
-                    </Button>
-                  )}
-                </VStack>
-              </Center>
+              <EmptyState
+                icon={SearchIcon}
+                title={`No ${searchType} found`}
+                description={
+                  searchQuery 
+                    ? `We couldn't find any ${searchType} matching "${searchQuery}". Try adjusting your search terms or try a different query.`
+                    : `No ${searchType} available yet. ${searchType === 'profiles' ? 'Be the first to create a profile!' : 'Check back later for new insights.'}`
+                }
+                action={searchQuery ? {
+                  label: 'Clear search and view all',
+                  onClick: handleClearFilters
+                } : undefined}
+                height="50vh"
+              />
             )}
         </VStack>
       </Container>
