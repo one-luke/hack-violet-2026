@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.supabase_client import supabase
 from app.middleware.auth import require_auth
+from app.services.embedding_service import generate_embedding
 
 insights_bp = Blueprint('insights', __name__)
 
@@ -35,7 +36,7 @@ def get_insights_feed():
                 'full_name, profile_picture_url'
             ).eq('id', insight['user_id']).execute()
             if profile_response.data:
-                insight['profile'] = profile_response.data[0]
+                insight['profiles'] = profile_response.data[0]
             
             # Get like count
             likes_response = supabase.table('insight_likes').select(
@@ -72,6 +73,12 @@ def create_insight():
             'link_title': data.get('link_title')
         }
         
+        # Generate embedding for the insight
+        text_to_embed = f"{data['title']} {data['content']}"
+        embedding = generate_embedding(text_to_embed)
+        if embedding:
+            insight_data['embedding'] = embedding
+        
         response = supabase.table('insights').insert(insight_data).execute()
         
         return jsonify(response.data[0]), 201
@@ -91,6 +98,13 @@ def get_insight(insight_id):
             return jsonify({'error': 'Insight not found'}), 404
         
         insight = insight_response.data[0]
+        
+        # Get profile info
+        profile_response = supabase.table('profiles').select(
+            'full_name, profile_picture_url'
+        ).eq('id', insight['user_id']).execute()
+        if profile_response.data:
+            insight['profiles'] = profile_response.data[0]
         
         # Get like count
         likes_response = supabase.table('insight_likes').select(
@@ -180,9 +194,18 @@ def get_user_insights(user_id):
             '*'
         ).eq('user_id', user_id).order('created_at', desc=True).execute()
         
+        # Get profile info
+        profile_response = supabase.table('profiles').select(
+            'full_name, profile_picture_url'
+        ).eq('id', user_id).execute()
+        profile_data = profile_response.data[0] if profile_response.data else None
+        
         # Get like counts for each insight
         insights = insights_response.data
         for insight in insights:
+            # Add profile data to each insight
+            if profile_data:
+                insight['profiles'] = profile_data
             likes_response = supabase.table('insight_likes').select(
                 'id', count='exact'
             ).eq('insight_id', insight['id']).execute()
@@ -264,4 +287,156 @@ def unlike_insight(insight_id):
             'likes_count': likes_response.count or 0
         }), 200
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@insights_bp.route('/insights/search', methods=['GET'])
+@require_auth
+def search_insights():
+    """Search insights by query with semantic search support"""
+    try:
+        user_id = request.user.user.id
+        search_query = request.args.get('q', '').strip()
+        
+        # Get all insights first (excluding current user's insights)
+        insights_response = supabase.table('insights').select(
+            '*'
+        ).neq('user_id', user_id).order('created_at', desc=True).execute()
+        
+        insights = insights_response.data or []
+        
+        # Add profile data to each insight
+        for insight in insights:
+            profile_response = supabase.table('profiles').select(
+                'full_name, profile_picture_url'
+            ).eq('id', insight['user_id']).execute()
+            if profile_response.data:
+                insight['profiles'] = profile_response.data[0]
+            
+            # Get like count
+            likes_response = supabase.table('insight_likes').select(
+                'id', count='exact'
+            ).eq('insight_id', insight['id']).execute()
+            insight['likes_count'] = likes_response.count or 0
+            
+            # Check if current user liked it
+            user_like = supabase.table('insight_likes').select('id').eq(
+                'insight_id', insight['id']
+            ).eq('user_id', user_id).execute()
+            insight['liked_by_user'] = len(user_like.data) > 0
+        
+        # Apply search filter if query exists
+        if search_query:
+            # Try semantic search first
+            query_embedding = generate_embedding(search_query)
+            
+            if query_embedding:
+                try:
+                    # Use Supabase RPC to call the semantic search function
+                    result = supabase.rpc(
+                        'search_insights_semantic',
+                        {
+                            'query_embedding': query_embedding,
+                            'match_threshold': 0.2,
+                            'match_count': 100
+                        }
+                    ).execute()
+                    
+                    if result.data:
+                        # Create a map of insight IDs with their similarity scores
+                        similarity_map = {i['id']: i['similarity'] for i in result.data}
+                        semantic_insight_ids = set(similarity_map.keys())
+                        
+                        # Filter to only include insights from semantic search
+                        filtered_insights = [
+                            i for i in insights
+                            if i.get('id') in semantic_insight_ids
+                        ]
+                        
+                        # Sort by similarity score
+                        filtered_insights.sort(
+                            key=lambda i: similarity_map.get(i.get('id'), 0),
+                            reverse=True
+                        )
+                        
+                        # Add similarity score for debugging
+                        for i in filtered_insights:
+                            i['_similarity'] = similarity_map.get(i.get('id'), 0)
+                        
+                        insights = filtered_insights
+                    else:
+                        insights = []
+                        
+                except Exception as semantic_error:
+                    print(f"Semantic search error: {str(semantic_error)}")
+                    # Fall back to basic text search
+                    search_lower = search_query.lower()
+                    insights = [
+                        i for i in insights
+                        if (search_lower in (i.get('title') or '').lower() or
+                            search_lower in (i.get('content') or '').lower())
+                    ]
+            else:
+                # Fall back to basic text search if embedding generation fails
+                search_lower = search_query.lower()
+                insights = [
+                    i for i in insights
+                    if (search_lower in (i.get('title') or '').lower() or
+                        search_lower in (i.get('content') or '').lower())
+                ]
+        
+        return jsonify(insights), 200
+    except Exception as e:
+        print(f"Insight search error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@insights_bp.route('/insights/embeddings/generate', methods=['POST'])
+@require_auth
+def generate_insight_embeddings():
+    """Regenerate embeddings for all insights"""
+    try:
+        force_regenerate = request.args.get('force', 'true').lower() == 'true'
+        
+        if force_regenerate:
+            # Get all insights
+            response = supabase.table('insights').select('*').execute()
+            insights_to_update = response.data or []
+        else:
+            # Only get insights without embeddings
+            response = supabase.table('insights').select('*').is_('embedding', 'null').execute()
+            insights_to_update = response.data or []
+        
+        total = len(insights_to_update)
+        updated = 0
+        failed = 0
+        
+        for insight in insights_to_update:
+            try:
+                # Generate embedding from title and content
+                text_to_embed = f"{insight.get('title', '')} {insight.get('content', '')}"
+                embedding = generate_embedding(text_to_embed)
+                
+                if embedding:
+                    # Update the insight with the new embedding
+                    supabase.table('insights').update({
+                        'embedding': embedding
+                    }).eq('id', insight['id']).execute()
+                    updated += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                print(f"Failed to generate embedding for insight {insight['id']}: {str(e)}")
+                failed += 1
+        
+        return jsonify({
+            'total': total,
+            'updated': updated,
+            'failed': failed,
+            'message': f'Successfully updated {updated} out of {total} insights'
+        }), 200
+    except Exception as e:
+        print(f"Error generating insight embeddings: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500

@@ -15,8 +15,10 @@ import {
   Avatar,
   Text,
   Container,
+  IconButton,
+  Tooltip,
 } from '@chakra-ui/react'
-import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons'
+import { ChevronDownIcon, SearchIcon, ChatIcon, AddIcon } from '@chakra-ui/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from './logo.png'
@@ -118,7 +120,34 @@ const Navbar = () => {
             </InputGroup>
           </HStack>
 
-          <Flex alignItems="center">
+          <Flex alignItems="center" gap={2}>
+            <Button
+              leftIcon={<AddIcon />}
+              onClick={() => navigate('/insights/create')}
+              colorScheme="primary"
+              size="sm"
+              borderRadius="full"
+              boxShadow="sm"
+              _hover={{
+                transform: 'translateY(-1px)',
+                boxShadow: 'md',
+              }}
+              transition="all 0.2s"
+            >
+              Create Insight
+            </Button>
+            <Tooltip label="Messages" placement="bottom">
+              <IconButton
+                aria-label="Messages"
+                icon={<ChatIcon />}
+                onClick={() => navigate('/messages')}
+                variant="ghost"
+                colorScheme="primary"
+                size="md"
+                borderRadius="full"
+                _hover={{ bg: 'primary.50' }}
+              />
+            </Tooltip>
             <Menu>
               <MenuButton
                 as={Button}

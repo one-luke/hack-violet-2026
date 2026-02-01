@@ -23,7 +23,7 @@ import { ExternalLinkIcon, EditIcon, DownloadIcon } from '@chakra-ui/icons'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Profile, Insight } from '../types'
-import { InsightsList, CreateInsightForm } from '../components/Insights'
+import { InsightsList } from '../components/Insights'
 
 const ViewProfile = () => {
   const { user } = useAuth()
@@ -38,7 +38,6 @@ const ViewProfile = () => {
   const [followLoading, setFollowLoading] = useState(false)
   const [insights, setInsights] = useState<Insight[]>([])
   const [insightsLoading, setInsightsLoading] = useState(false)
-  const [showCreateInsight, setShowCreateInsight] = useState(false)
   
   // Determine if viewing own profile or another user's profile
   const isOwnProfile = !userId || userId === user?.id
@@ -222,40 +221,6 @@ const ViewProfile = () => {
       console.error('Error fetching insights:', error)
     } finally {
       setInsightsLoading(false)
-    }
-  }
-
-  const handleCreateInsight = async (data: { title: string; content: string; link_url?: string; link_title?: string }) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/insights`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        }
-      )
-
-      if (!response.ok) throw new Error('Failed to create insight')
-
-      toast({
-        title: 'Insight posted!',
-        description: 'Your career insight has been shared',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      })
-
-      setShowCreateInsight(false)
-      fetchInsights()
-    } catch (error: any) {
-      throw error
     }
   }
 
@@ -648,23 +613,16 @@ const ViewProfile = () => {
           <VStack spacing={4} align="stretch">
             <HStack justify="space-between" align="center">
               <Heading size="md">Career Insights</Heading>
-              {isOwnProfile && !showCreateInsight && (
+              {isOwnProfile && (
                 <Button
                   colorScheme="primary"
                   size="sm"
-                  onClick={() => setShowCreateInsight(true)}
+                  onClick={() => navigate('/insights/create')}
                 >
                   Share Insight
                 </Button>
               )}
             </HStack>
-
-            {showCreateInsight && isOwnProfile && (
-              <CreateInsightForm
-                onSubmit={handleCreateInsight}
-                onCancel={() => setShowCreateInsight(false)}
-              />
-            )}
 
             {insightsLoading ? (
               <Center py={8}>

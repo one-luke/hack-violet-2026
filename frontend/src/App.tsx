@@ -11,6 +11,7 @@ import EditProfile from './pages/EditProfile'
 import ViewProfile from './pages/ViewProfile'
 import Search from './pages/Search'
 import Messages from './pages/Messages'
+import CreateInsight from './pages/CreateInsight'
 
 function App() {
   return (
@@ -75,6 +76,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Messages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/insights/create"
+              element={
+                <ProtectedRoute>
+                  <CreateInsight />
                 </ProtectedRoute>
               }
             />

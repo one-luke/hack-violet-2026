@@ -387,9 +387,6 @@ const Dashboard = () => {
                   Recent Activity
                 </Heading>
               </HStack>
-              <Badge colorScheme="purple" fontSize="xs" px={3} py={1} borderRadius="full">
-                {notifications.length} new
-              </Badge>
             </HStack>
             <VStack spacing={0} align="stretch">
               {notifications.map((notification, index) => (

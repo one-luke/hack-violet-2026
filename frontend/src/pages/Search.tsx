@@ -31,10 +31,12 @@ import {
   CardBody,
   Badge,
   Flex,
+  ButtonGroup,
 } from '@chakra-ui/react'
 import { SearchIcon } from '@chakra-ui/icons'
 import { supabase } from '../lib/supabase'
-import { Profile } from '../types'
+import { Profile, Insight } from '../types'
+import { InsightCard } from '../components/Insights'
 
 const INDUSTRIES = [
   'Software Engineering',
@@ -64,14 +66,23 @@ export default function Search() {
   const toast = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [searchType, setSearchType] = useState<'profiles' | 'insights'>('profiles')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [hasSearched, setHasSearched] = useState(false)
+  const [hasSearched, setHasSearched] = useState(true)
   const [generatingEmbeddings, setGeneratingEmbeddings] = useState(false)
 
   useEffect(() => {
     handleSearch()
   }, [])
+
+  // Trigger search when searchType changes
+  useEffect(() => {
+    if (hasSearched) {
+      handleSearch()
+    }
+  }, [searchType])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -90,7 +101,7 @@ export default function Search() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        setError('Please sign in to search profiles')
+        setError('Please sign in to search')
         return
       }
 
@@ -102,33 +113,55 @@ export default function Search() {
       const params = new URLSearchParams()
       if (effectiveQuery) params.append('q', effectiveQuery)
 
-      // Handle VITE_API_URL: empty/undefined = relative path, otherwise use as prefix
       const apiBase = import.meta.env.VITE_API_URL || ''
-      const apiUrl = `${apiBase}/api/profile/search?${params.toString()}`
-      console.log('Fetching profiles from:', apiUrl)
       
-      const response = await fetch(apiUrl, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      })
+      if (searchType === 'profiles') {
+        const apiUrl = `${apiBase}/api/profile/search?${params.toString()}`
+        console.log('Fetching profiles from:', apiUrl)
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        })
 
-      console.log('Response status:', response.status)
-      
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Search error:', errorText)
-        throw new Error(`Failed to search profiles: ${response.status} ${errorText}`)
+        console.log('Response status:', response.status)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('Search error:', errorText)
+          throw new Error(`Failed to search profiles: ${response.status} ${errorText}`)
+        }
+
+        const data = await response.json()
+        const currentUserId = session.user.id
+        setProfiles(data.filter((p: Profile) => p.id !== currentUserId))
+        setInsights([])
+      } else {
+        // Search insights
+        const apiUrl = `${apiBase}/api/insights/search?${params.toString()}`
+        console.log('Fetching insights from:', apiUrl)
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        })
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('Search error:', errorText)
+          throw new Error(`Failed to search insights: ${response.status} ${errorText}`)
+        }
+
+        const data = await response.json()
+        setInsights(data)
+        setProfiles([])
       }
-
-      const data = await response.json()
-
-      const currentUserId = session.user.id
-      setProfiles(data.filter((p: Profile) => p.id !== currentUserId))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
       toast({
-        title: 'Error searching profiles',
+        title: `Error searching ${searchType}`,
         description: err instanceof Error ? err.message : 'An error occurred',
         status: 'error',
         duration: 5000,
@@ -141,8 +174,14 @@ export default function Search() {
 
   const handleClearFilters = () => {
     setSearchQuery('')
-    setHasSearched(false)
-    setTimeout(() => handleSearch(), 100)
+    setProfiles([])
+    setInsights([])
+    setTimeout(() => handleSearch({ query: '' }), 100)
+  }
+
+  const handleSearchTypeChange = (type: 'profiles' | 'insights') => {
+    setSearchType(type)
+    setLoading(true)
   }
 
   const handleGenerateEmbeddings = async () => {
@@ -161,7 +200,11 @@ export default function Search() {
       }
 
       const apiBase = import.meta.env.VITE_API_URL || ''
-      const response = await fetch(`${apiBase}/api/profile/embeddings/generate`, {
+      const endpoint = searchType === 'profiles' 
+        ? `${apiBase}/api/profile/embeddings/generate`
+        : `${apiBase}/api/insights/embeddings/generate`
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -176,7 +219,7 @@ export default function Search() {
       
       toast({
         title: 'Embeddings generated',
-        description: `Updated ${data.updated} profiles, ${data.failed} failed out of ${data.total} total`,
+        description: `Updated ${data.updated} ${searchType}, ${data.failed} failed out of ${data.total} total`,
         status: 'success',
         duration: 7000,
         isClosable: true,
@@ -206,6 +249,66 @@ export default function Search() {
     return found ? found.label : status
   }
 
+  const handleLikeInsight = async (insightId: string) => {
+    try {
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}/like`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+    } catch (error) {
+      console.error('Error liking insight:', error)
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+    }
+  }
+
+  const handleUnlikeInsight = async (insightId: string) => {
+    try {
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: false, likes_count: insight.likes_count - 1 }
+          : insight
+      ))
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/insights/${insightId}/unlike`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+    } catch (error) {
+      console.error('Error unliking insight:', error)
+      setInsights(prev => prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, liked_by_user: true, likes_count: insight.likes_count + 1 }
+          : insight
+      ))
+    }
+  }
+
   return (
     <Box bg="gray.50" minH="100vh">
       <Box
@@ -215,52 +318,41 @@ export default function Search() {
       >
         <Container maxW="container.xl">
           <VStack spacing={8} align="stretch">
-            <Flex justify="space-between" align="center">
-              <VStack align="start" spacing={1}>
-                <Heading
-                  size="2xl"
-                  bgGradient="linear(to-r, primary.600, accent.500)"
-                  bgClip="text"
-                  fontWeight="extrabold"
-                  letterSpacing="tight"
-                >
-                  Discover Profiles
-                </Heading>
-                <Text color="gray.600" fontSize="lg" fontWeight="medium">
-                  Find and connect with women in STEM
-                </Text>
-              </VStack>
-              <Button
-                size="sm"
-                variant="ghost"
-                colorScheme="purple"
-                onClick={handleGenerateEmbeddings}
-                isLoading={generatingEmbeddings}
-                loadingText="Generating..."
-                display={{ base: 'none', md: 'flex' }}
-                fontSize="sm"
+            <VStack align="start" spacing={2}>
+              <Heading
+                size="2xl"
+                bgGradient="linear(to-r, primary.600, accent.500)"
+                bgClip="text"
+                fontWeight="extrabold"
+                letterSpacing="tight"
               >
-                Regenerate Embeddings
-              </Button>
-            </Flex>
+                Discover
+              </Heading>
+              <Text color="gray.600" fontSize="lg" fontWeight="medium">
+                Find and connect with women in STEM
+              </Text>
+            </VStack>
 
             <Box maxW="1000px" mx="auto" w="full">
-              <Box
-                w="full"
-                position="relative"
-                bg="white"
-                borderRadius="full"
-                shadow="lg"
-                border="1px"
-                borderColor="gray.100"
-              >
-                <Flex align="center" gap={2} p={2}>
+              <VStack spacing={4} w="full">
+                <Box
+                  w="full"
+                  position="relative"
+                  bg="white"
+                  borderRadius="full"
+                  shadow="lg"
+                  border="1px"
+                  borderColor="gray.100"
+                >
+                  <Flex align="center" gap={2} p={2}>
                   <InputGroup size="lg" flex="1">
                     <InputLeftElement h="full" pl={2} pointerEvents="none">
                       <SearchIcon color="primary.500" boxSize={5} />
                     </InputLeftElement>
                     <Input
-                      placeholder="Search by name, location, school, industry, skills..."
+                      placeholder={searchType === 'profiles' 
+                        ? "Search by name, location, school, industry, skills..."
+                        : "Search insights by title, content, or topic..."}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyPress={handleKeyPress}
@@ -323,6 +415,7 @@ export default function Search() {
                   </Button>
                 </Flex>
               </Box>
+              </VStack>
             </Box>
           </VStack>
         </Container>
@@ -337,10 +430,70 @@ export default function Search() {
             </Alert>
           )}
 
-            {hasSearched && !loading && (
-              <Heading size="md" mb={6} color="text.700" fontWeight="semibold">
-                {profiles.length} {profiles.length === 1 ? 'Profile' : 'Profiles'} Found
-              </Heading>
+            {hasSearched && (
+              <HStack justify="space-between" align="center" mb={6}>
+                <Heading size="md" color="text.700" fontWeight="semibold">
+                  {loading ? (
+                    <HStack spacing={2}>
+                      <Text>Searching {searchType}...</Text>
+                    </HStack>
+                  ) : (
+                    <>
+                      {searchType === 'profiles' 
+                        ? `${profiles.length} ${profiles.length === 1 ? 'Profile' : 'Profiles'} Found`
+                        : `${insights.length} ${insights.length === 1 ? 'Insight' : 'Insights'} Found`}
+                    </>
+                  )}
+                </Heading>
+                
+                <HStack spacing={3}>
+                  <ButtonGroup size="sm" isAttached variant="outline" spacing={0}>
+                    <Button
+                      onClick={() => handleSearchTypeChange('profiles')}
+                      bg={searchType === 'profiles' ? 'primary.500' : 'white'}
+                      color={searchType === 'profiles' ? 'white' : 'gray.600'}
+                      borderColor="gray.200"
+                      borderRightWidth={searchType === 'profiles' ? '1px' : '0'}
+                      _hover={{
+                        bg: searchType === 'profiles' ? 'primary.600' : 'gray.50'
+                      }}
+                      fontWeight="semibold"
+                      px={5}
+                      h="36px"
+                      isDisabled={loading}
+                    >
+                      Profiles
+                    </Button>
+                    <Button
+                      onClick={() => handleSearchTypeChange('insights')}
+                      bg={searchType === 'insights' ? 'primary.500' : 'white'}
+                      color={searchType === 'insights' ? 'white' : 'gray.600'}
+                      borderColor="gray.200"
+                      _hover={{
+                        bg: searchType === 'insights' ? 'primary.600' : 'gray.50'
+                      }}
+                      fontWeight="semibold"
+                      px={5}
+                      h="36px"
+                      isDisabled={loading}
+                    >
+                      Insights
+                    </Button>
+                  </ButtonGroup>
+
+                  {/* <Button
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="purple"
+                    onClick={handleGenerateEmbeddings}
+                    isLoading={generatingEmbeddings}
+                    loadingText="Generating..."
+                    fontSize="xs"
+                  >
+                    Regenerate Embeddings
+                  </Button> */}
+                </HStack>
+              </HStack>
             )}
 
             {loading ? (
@@ -352,12 +505,12 @@ export default function Search() {
                       Searching...
                     </Text>
                     <Text fontSize="sm" color="gray.500">
-                      Looking for profiles
+                      Looking for {searchType}
                     </Text>
                   </VStack>
                 </VStack>
               </Center>
-            ) : (
+            ) : searchType === 'profiles' ? (
               <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                 {profiles.map((profile) => (
                   <Card
@@ -495,9 +648,21 @@ export default function Search() {
                   </Card>
                 ))}
               </SimpleGrid>
+            ) : (
+              <VStack spacing={0} align="stretch">
+                {insights.map((insight) => (
+                  <InsightCard
+                    key={insight.id}
+                    insight={insight}
+                    onLike={handleLikeInsight}
+                    onUnlike={handleUnlikeInsight}
+                    isOwner={false}
+                  />
+                ))}
+              </VStack>
             )}
 
-            {hasSearched && profiles.length === 0 && !loading && (
+            {hasSearched && ((searchType === 'profiles' && profiles.length === 0) || (searchType === 'insights' && insights.length === 0)) && !loading && (
               <Center py={20}>
                 <VStack spacing={4}>
                   <Box
@@ -508,11 +673,24 @@ export default function Search() {
                     <SearchIcon boxSize={12} color="gray.400" />
                   </Box>
                   <Heading size="md" color="gray.600" fontWeight="semibold">
-                    No profiles found
+                    No {searchType} found
                   </Heading>
-                  <Text color="gray.500" textAlign="center" maxW="sm">
-                    Try adjusting your search terms or try a different query
+                  <Text color="gray.500" textAlign="center" maxW="md">
+                    {searchQuery 
+                      ? `We couldn't find any ${searchType} matching "${searchQuery}". Try adjusting your search terms or try a different query.`
+                      : `No ${searchType} available yet. ${searchType === 'profiles' ? 'Be the first to create a profile!' : 'Check back later for new insights.'}`
+                    }
                   </Text>
+                  {searchQuery && (
+                    <Button
+                      onClick={handleClearFilters}
+                      colorScheme="primary"
+                      variant="ghost"
+                      mt={2}
+                    >
+                      Clear search and view all
+                    </Button>
+                  )}
                 </VStack>
               </Center>
             )}
