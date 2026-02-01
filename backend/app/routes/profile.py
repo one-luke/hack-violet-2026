@@ -86,52 +86,84 @@ def search_profiles():
         career_status = request.args.get('career_status', '').strip()
         skills = request.args.getlist('skills')  # Can pass multiple skills
         
-        # Start with base query selecting all fields
-        query = supabase.table('profiles').select('*')
+        print(f"Search params - q:{search_query}, industry:{industry}, location:{location}, school:{school}, career_status:{career_status}, skills:{skills}")
         
-        # Apply text search if provided (searches name, bio, custom_industry)
-        if search_query:
-            # Use Supabase's text search on multiple fields
-            # We'll filter on the backend after fetching
-            pass  # Will filter after fetch
+        # Fetch all profiles first to avoid Supabase query issues
+        # Then filter in Python
+        try:
+            response = supabase.table('profiles').select('*').execute()
+            print(f"Fetched {len(response.data) if response.data else 0} profiles from database")
+            profiles = response.data or []
+        except Exception as db_error:
+            print(f"Database query error: {type(db_error).__name__}: {str(db_error)}")
+            # Try a simpler query with limit if full query fails
+            try:
+                response = supabase.table('profiles').select('*').limit(100).execute()
+                profiles = response.data or []
+                print(f"Fallback query returned {len(profiles)} profiles")
+            except Exception as fallback_error:
+                print(f"Fallback query also failed: {str(fallback_error)}")
+                return jsonify({'error': 'Database query failed', 'details': str(db_error)}), 500
         
-        # Apply exact match filters
+        # Apply filters in Python
+        filtered_profiles = profiles
+        
+        # Filter by industry (case-insensitive)
         if industry:
-            # Case-insensitive match for industry names
-            query = query.ilike('industry', industry)
+            industry_lower = industry.lower()
+            filtered_profiles = [
+                p for p in filtered_profiles
+                if (p.get('industry') or '').lower() == industry_lower
+            ]
         
+        # Filter by location (case-insensitive, partial match)
         if location:
-            query = query.ilike('location', f'%{location}%')
+            location_lower = location.lower()
+            filtered_profiles = [
+                p for p in filtered_profiles
+                if location_lower in (p.get('location') or '').lower()
+            ]
         
+        # Filter by school (case-insensitive, partial match)
         if school:
-            query = query.ilike('current_school', f'%{school}%')
+            school_lower = school.lower()
+            filtered_profiles = [
+                p for p in filtered_profiles
+                if school_lower in (p.get('current_school') or '').lower()
+            ]
         
+        # Filter by career status (exact match)
         if career_status:
-            query = query.eq('career_status', career_status)
+            filtered_profiles = [
+                p for p in filtered_profiles
+                if p.get('career_status') == career_status
+            ]
         
-        # Apply skills filter (check if profile has any of the specified skills)
+        # Filter by skills (contains any)
         if skills:
-            for skill in skills:
-                query = query.contains('skills', [skill])
+            filtered_profiles = [
+                p for p in filtered_profiles
+                if any(skill in (p.get('skills') or []) for skill in skills)
+            ]
         
-        response = query.execute()
-        profiles = response.data
-        
-        # Post-process for text search if query provided
-        if search_query and profiles:
+        # Filter by text search
+        if search_query:
             search_lower = search_query.lower()
-            profiles = [
-                p for p in profiles
+            filtered_profiles = [
+                p for p in filtered_profiles
                 if (search_lower in (p.get('full_name') or '').lower() or
                     search_lower in (p.get('bio') or '').lower() or
                     search_lower in (p.get('custom_industry') or '').lower() or
                     search_lower in (p.get('industry') or '').lower())
             ]
         
-        return jsonify(profiles), 200
+        print(f"Returning {len(filtered_profiles)} filtered profiles")
+        return jsonify(filtered_profiles), 200
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Search error: {type(e).__name__}: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
 
 @bp.route('/search/parse', methods=['POST'])
 @require_auth
