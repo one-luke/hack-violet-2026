@@ -2,7 +2,7 @@ import traceback
 from flask import Blueprint, request, jsonify
 from app.middleware.auth import require_auth
 from app.supabase_client import supabase
-from app.services.openrouter_nlp import parse_search_query
+from app.services.openrouter_nlp import parse_search_query, recommend_profile_ids
 
 bp = Blueprint('profile', __name__)
 
@@ -158,6 +158,50 @@ def parse_search():
     except Exception as e:
         print("OpenRouter parse error:", str(e))
         traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/recommendations', methods=['GET'])
+@require_auth
+def get_recommendations():
+    """Recommend profiles based on the current user's profile"""
+    try:
+        limit = request.args.get('limit', '5')
+        try:
+            limit = int(limit)
+        except ValueError:
+            limit = 5
+        limit = max(1, min(limit, 20))
+
+        user_id = request.user.user.id
+        user_resp = (
+            supabase.table('profiles')
+            .select('id,full_name,email,location,industry,custom_industry,current_school,career_status,skills,bio,profile_picture_url')
+            .eq('id', user_id)
+            .single()
+            .execute()
+        )
+        if not user_resp.data:
+            return jsonify({'error': 'Profile not found'}), 404
+
+        candidates_resp = (
+            supabase.table('profiles')
+            .select('id,full_name,email,location,industry,custom_industry,current_school,career_status,skills,bio,profile_picture_url')
+            .neq('id', user_id)
+            .execute()
+        )
+        candidates = candidates_resp.data or []
+        if not candidates:
+            return jsonify([]), 200
+
+        ranked_ids = recommend_profile_ids(user_resp.data, candidates)
+        if ranked_ids:
+            candidate_map = {c['id']: c for c in candidates}
+            ordered = [candidate_map[cid] for cid in ranked_ids if cid in candidate_map]
+        else:
+            ordered = candidates
+
+        return jsonify(ordered[:limit]), 200
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/<user_id>', methods=['GET'])
