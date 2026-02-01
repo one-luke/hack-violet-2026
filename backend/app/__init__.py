@@ -44,18 +44,19 @@ def create_app():
     from app.routes.messages import messages_bp
     from app.routes.insights import insights_bp
     
-    app.register_blueprint(profile.bp)
-    app.register_blueprint(auth.bp)
-    app.register_blueprint(follows_bp, url_prefix='/follows')
-    app.register_blueprint(notifications_bp, url_prefix='/notifications')
-    app.register_blueprint(messages_bp, url_prefix='/messages')
-    app.register_blueprint(insights_bp, url_prefix='')
+    app.register_blueprint(profile.bp, url_prefix='/api/profile')
+    app.register_blueprint(auth.bp, url_prefix='/api/auth')
+    app.register_blueprint(follows_bp, url_prefix='/api/follows')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(messages_bp, url_prefix='/api/messages')
+    app.register_blueprint(insights_bp, url_prefix='/api')
     
-    @app.route('/health')
+    @app.route('/api/health')
     def health():
         return {'status': 'healthy'}, 200
     
-    @app.route('/')
+    @app.route('/api/')
+    @app.route('/api')
     def root():
         from flask import request
         return jsonify({

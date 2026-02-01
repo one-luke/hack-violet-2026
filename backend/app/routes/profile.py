@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.middleware.auth import require_auth
 from app.supabase_client import supabase
 
-bp = Blueprint('profile', __name__, url_prefix='/profile')
+bp = Blueprint('profile', __name__)
 
 @bp.route('', methods=['GET'])
 @require_auth
