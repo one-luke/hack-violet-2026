@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 
@@ -14,6 +14,10 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key')
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max file size
     
+    # Enable debug mode to see errors
+    app.config['DEBUG'] = True
+    app.config['PROPAGATE_EXCEPTIONS'] = True
+    
     # CORS - Allow all origins for development
     CORS(app, 
          resources={r"/*": {
@@ -22,6 +26,16 @@ def create_app():
              "allow_headers": ["Content-Type", "Authorization"],
              "expose_headers": ["Content-Type"],
          }})
+    
+    # Add error handler for better debugging
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'type': type(e).__name__,
+            'traceback': traceback.format_exc()
+        }), 500
     
     # Register blueprints
     from app.routes import profile, auth
